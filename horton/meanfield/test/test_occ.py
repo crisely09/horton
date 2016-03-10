@@ -109,3 +109,53 @@ def test_fixed_occ_model_os():
     assert (mol.exp_alpha.occupations[len(occs_alpha):] == 0.0).all()
     assert (mol.exp_beta.occupations[:len(occs_beta)] == occs_beta).all()
     assert (mol.exp_beta.occupations[len(occs_beta):] == 0.0).all()
+
+def test_marco_occ_model_cs():
+    fn_fchk = context.get_fn('test/water_hfs_321g.fchk')
+    mol = IOData.from_file(fn_fchk)
+    occ_model = MarcosOccModel(5.0)
+    occ_model.assign(mol.exp_alpha)
+
+#test_marco_occ_model_cs()
+
+mol = IOData(title='ne')
+mol.coordinates = np.array([[0.0, 0.0, 0.0]])
+mol.numbers = np.array([10])
+
+# Create a Gaussian basis set
+obasis = get_gobasis(mol.coordinates, mol.numbers, '6-311++g2d2p')
+
+# Create a linalg factory
+lf = DenseLinalgFactory(obasis.nbasis)
+
+# Compute Gaussian integrals
+olp = obasis.compute_overlap(lf)
+kin = obasis.compute_kinetic(lf)
+na = obasis.compute_nuclear_attraction(mol.coordinates, mol.pseudo_numbers, lf)
+er = obasis.compute_electron_repulsion(lf)
+
+# Create alpha orbitals
+exp_alpha = lf.create_expansion()
+
+# Initial guess
+guess_core_hamiltonian(olp, kin, na, exp_alpha)
+
+# Construct the restricted HF effective Hamiltonian
+external = {'nn': compute_nucnuc(mol.coordinates, mol.pseudo_numbers)}
+terms = [
+    RTwoIndexTerm(kin, 'kin'),
+    RDirectTerm(er, 'hartree'),
+    RExchangeTerm(er, 'x_hf'),
+    RTwoIndexTerm(na, 'ne'),
+]
+ham = REffHam(terms, external)
+
+# Decide how to occupy the orbitals (7 alpha electrons)
+#occ_model = AufbauOccModel(5)
+occ_model = MarcosOccModel(5, theta= 0.85)
+
+# Converge WFN with plain SCF
+scf_solver = PlainSCFSolver(1e-6)
+scf_solver(ham, lf, olp, occ_model, exp_alpha)
+
+print 'final orb energies', exp_alpha.energies
