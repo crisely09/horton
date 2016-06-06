@@ -28,12 +28,10 @@ from horton.quadprog import find_1d_root
 from horton.constants import boltzmann
 from horton.log import log
 from horton.utils import doc_inherit
-from horton.meanfield.thetaopt import optimizedOccupations
 
 
 __all__ = [
     'FixedOccModel', 'AufbauOccModel', 'AufbauSpinOccModel', 'FermiOccModel',
-    'MarcosOccModel',
 ]
 
 
@@ -257,97 +255,5 @@ class FermiOccModel(AufbauOccModel):
             else:
                 mu, error = find_1d_root(error, (mu0, error0), (mu1, error1), eps=self.eps)
                 exp.occupations[:] = get_occ(mu)
-
-
-class MarcosOccModel(AufbauOccModel):
-    '''Occupation model for the optimization of the temperature and chemical potential'''
-    def __init__(self, *noccs,  **kwargs):
-        '''
-           **Arguments:**
-
-           nalpha, nbeta, ...
-                The number of electrons in each channel.
-
-
-           theta
-                Controls the width of the distribution (derivative)
-
-
-           **Optional keyword arguments:**
-
-           eps
-                The error on the sum of the occupation number when searching for
-                the right Fermi level.
-
-           For each channel, the orbital occupations are assigned with the Fermi
-           distribution:
-
-           .. math::
-
-                n_i = \frac{1}{1 + e^{(\epsilon_i - \mu)/k_B T}}
-
-           where, for a given set of energy levels, :math:`\{\epsilon_i\}`, the
-           chemical potential, :math:`\mu`, is optimized as to satisfy the
-           following constraint:
-
-        '''
-        eps = kwargs.pop('eps', 1e-8)
-        theta = kwargs.pop('theta', 0.3)
-        if len(kwargs) > 0:
-            raise TypeError('Unknown keyword arguments: %s' % kwargs.keys())
-        if theta <= 0:
-            raise ValueError('Theta must be strictly positive')
-        if eps <= 0:
-            raise ValueError('The root-finder threshold (eps) must be strictly positive.')
-        self.theta = float(theta)
-        self.eps = eps
-        if len(noccs) == 1:
-            self.nelec = 2*noccs[0]
-        else:
-            self.nelec = sum(noccs)
-        print 'nelec', self.nelec
-        self.mu = None
-        AufbauOccModel.__init__(self, *noccs)
-    
-    def get_occupations(self, energies):
-        '''Calls external optimization Module to get the new occupations
-            after optimizing Teta and mu'''
-        print 'previous theta', self.theta
-        print 'previous mu', self.mu
-        mu, theta, occs = optimizedOccupations(energies, self.mu, self.nelec, self.theta)
-        self.theta = theta
-        self.mu =  mu
-        print 'new theta', self.theta
-        print 'new mu', self.mu
-        print "########################## occs ", occs
-        return occs
-
-    @doc_inherit(OccModel)
-    def assign(self, *exps):
-        if not  self.mu :
-            AufbauOccModel.assign(self, *exps)
-            mu = []
-            for exp in exps:
-                fgap = -abs(exp.get_lumo_energy() - exp.get_homo_energy())/2.0
-                mu.append(fgap)
-            self.mu = reduce(lambda x, y: x + y, mu) / len(mu)
-            print 'start mu', self.mu
-        energies = []
-        if len(exps) == 1:
-            energies.extend(exps[0].energies[:])
-            energies = 2*energies
-        else:
-            for exp in exps:
-                energies.extend(exp.energies[:])
-        lexp = len(exps[0].energies)
-        le = len(energies)
-        print 'energies', energies
-        occs_tmp = self.get_occupations(energies)
-        i = 1
-        start = 0
-        for exp in exps:
-            exp.occupations[:] = occs_tmp[start:i*lexp]
-            print 'occupations to exp', occs_tmp[start:i*lexp]
-            start = i*lexp
 
 
