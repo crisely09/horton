@@ -9,7 +9,7 @@ from horton import *
 import numpy as np
 
 
-# Hartree-Fock calculation
+# DFT calculation
 # ------------------------
 
 # Construct a molecule from scratch
@@ -50,7 +50,10 @@ if nelec % 2 == 0:
     terms = [
         RTwoIndexTerm(kin, 'kin'),
         RDirectTerm(er, 'hartree'),
-        RExchangeTerm(er, 'x_hf'),
+        RGridGroup(obasis, grid, [
+            RLibXCLDA('x'),
+            RLibXCLDA('c_vwn'),
+        ]),
         RTwoIndexTerm(na, 'ne'),
     ]
     ham = REffHam(terms, external)
@@ -119,7 +122,10 @@ else:
     terms = [
         UTwoIndexTerm(kin, 'kin'),
         UDirectTerm(er, 'hartree'),
-        UExchangeTerm(er, 'x_hf'),
+        UGridGroup(obasis, grid, [
+            ULibXCLDA('x'),
+            ULibXCLDA('c_vwn'),
+        ]),
         UTwoIndexTerm(na, 'ne'),
     ]
     ham = UEffHam(terms, external)
