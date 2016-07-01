@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
+# --
 '''Periodic table of elements
 
    This module contains an object ``periodic`` that can be used as a Pythonic
@@ -131,7 +131,7 @@ class Element(object):
 
        pold_chu
             Isolated atom dipole polarizability. X. Chu & A. Dalgarno, J. Chem.
-            Phys., 121(9), 4083–4088 (2004), URL
+            Phys., 121(9), 4083--4088 (2004), URL
             http://dx.doi.org/10.1063/1.1779576 Theoretical value for hydrogen
             from this paper: A.D. Buckingham, K.L. Clarke; Chem. Phys. Lett.
             57(3), 321--325 (1978), URL
@@ -139,7 +139,7 @@ class Element(object):
 
        c6_chu
             Isolated atom C_6 dispersion coefficient. X. Chu & A. Dalgarno, J. Chem.
-            Phys., 121(9), 4083–4088 (2004), URL
+            Phys., 121(9), 4083--4088 (2004), URL
             http://dx.doi.org/10.1063/1.1779576 Theoretical value for hydrogen
             from this paper: K. T. Tang, J. M. Norbeck and P. R. Certain; J.
             Chem. Phys. 64, 3063 (1976), URL #

@@ -1,5 +1,5 @@
 // HORTON: Helpful Open-source Research TOol for N-fermion systems.
-// Copyright (C) 2011-2015 The HORTON Development Team
+// Copyright (C) 2011-2016 The HORTON Development Team
 //
 // This file is part of HORTON.
 //
@@ -29,47 +29,6 @@
 #include "horton/moments.h"
 #include "horton/grid/evaluate.h"
 
-
-void eval_spline_cube(CubicSpline* spline, double* center, double* output,
-                      UniformGrid* ugrid) {
-
-    // Find the ranges for the triple loop
-    double rcut = spline->get_last_x();
-    long begin[3], end[3];
-    ugrid->set_ranges_rcut(center, rcut, begin, end);
-
-    Block3Iterator b3i = Block3Iterator(begin, end, ugrid->shape);
-
-    // Run triple loop over blocks (serial)
-    for (long iblock=b3i.get_nblock()-1; iblock>=0; iblock--) {
-        long b[3];
-        b3i.set_block(iblock, b);
-
-        long cube_begin[3];
-        long cube_end[3];
-        b3i.set_cube_ranges(b, cube_begin, cube_end);
-
-        // Run triple loop within one block (parallel)
-        Cube3Iterator c3i = Cube3Iterator(cube_begin, cube_end);
-        #pragma omp parallel for
-        for (long ipoint=c3i.get_npoint()-1; ipoint>=0; ipoint--) {
-            long j[3];
-            long jwrap[3];
-            c3i.set_point(ipoint, jwrap);
-            b3i.translate(b, jwrap, j);
-
-            double d = ugrid->dist_grid_point(center, j);
-
-            // Evaluate spline if needed
-            if ((d < rcut) || spline->get_extrapolation()->has_tail()) {
-                double s;
-                spline->eval(&d, &s, 1);
-                *(ugrid->get_pointer(output, jwrap)) += s;
-            }
-
-        }
-    }
-}
 
 void eval_spline_grid(CubicSpline* spline, double* center, double* output,
                       double* points, Cell* cell, long npoint) {
@@ -175,7 +134,7 @@ void eval_decomposition_grid(CubicSpline** splines, double* center,
                         splines[0]->eval(&d, &s, 1);
                         *output += s*INV_SQRT_4_PI;
 
-                        if (lmax > 0) {
+                        if ((lmax > 0) && (d > 0)) {
                             // l > 0
                             work[0] = z;
                             work[1] = x;

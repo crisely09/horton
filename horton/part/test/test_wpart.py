@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -17,13 +17,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
-#pylint: skip-file
+# --
 
 
 import numpy as np
+from nose.plugins.attrib import attr
 
-from horton import *
+from horton import *  # pylint: disable=wildcard-import,unused-wildcard-import
 from horton.part.test.common import check_names, check_proatom_splines, \
     get_proatomdb_hf_sto3g, get_proatomdb_hf_lan
 from horton.scripts.wpart import wpart_schemes
@@ -55,9 +55,7 @@ def check_water_hf_sto3g(scheme, expecting, needs_padb=True, **kwargs):
     assert abs(wpart['charges'] - wpart['cartesian_multipoles'][:,0]).max() < 1e-3
     assert abs(wpart['charges'] - wpart['pure_multipoles'][:,0]).max() < 1e-3
 
-    if kwargs.get('greedy', False):
-        check_proatom_splines(wpart)
-
+    check_proatom_splines(wpart)
     return wpart
 
 
@@ -79,36 +77,6 @@ def test_hirshfeld_i_water_hf_sto3g_local():
 def test_hirshfeld_i_water_hf_sto3g_global():
     expecting = np.array([-0.4214, 0.2107, 0.2107]) # From HiPart
     check_water_hf_sto3g('hi', expecting, local=False)
-
-
-def test_hirshfeld_i_water_hf_sto3g_local_greedy():
-    expecting = np.array([-0.4214, 0.2107, 0.2107]) # From HiPart
-    check_water_hf_sto3g('hi', expecting, local=True, greedy=True)
-
-
-def test_hirshfeld_i_water_hf_sto3g_global_greedy():
-    expecting = np.array([-0.4214, 0.2107, 0.2107]) # From HiPart
-    check_water_hf_sto3g('hi', expecting, local=False, greedy=True)
-
-
-def test_hirshfeld_e_water_hf_sto3g_local():
-    expecting = np.array([-0.422794483125, 0.211390419810, 0.211404063315]) # From HiPart
-    check_water_hf_sto3g('he', expecting, local=True)
-
-
-def test_hirshfeld_e_water_hf_sto3g_global():
-    expecting = np.array([-0.422794483125, 0.211390419810, 0.211404063315]) # From HiPart
-    check_water_hf_sto3g('he', expecting, local=False)
-
-
-def test_hirshfeld_e_water_hf_sto3g_local_greedy():
-    expecting = np.array([-0.422794483125, 0.211390419810, 0.211404063315]) # From HiPart
-    check_water_hf_sto3g('he', expecting, local=True, greedy=True)
-
-
-def test_hirshfeld_e_water_hf_sto3g_global_greedy():
-    expecting = np.array([-0.422794483125, 0.211390419810, 0.211404063315]) # From HiPart
-    check_water_hf_sto3g('he', expecting, local=False, greedy=True)
 
 
 def test_is_water_hf_sto3g():
@@ -148,8 +116,7 @@ def check_msa_hf_lan(scheme, expecting, needs_padb=True, **kwargs):
     wpart.do_charges()
     assert abs(wpart['charges'] - expecting).max() < 4e-3
 
-    if kwargs.get('greedy', False):
-        check_proatom_splines(wpart)
+    check_proatom_splines(wpart)
 
 
 def test_hirshfeld_msa_hf_lan_local():
@@ -157,51 +124,25 @@ def test_hirshfeld_msa_hf_lan_local():
     check_msa_hf_lan('h', expecting, local=True)
 
 
+@attr('slow')
 def test_hirshfeld_msa_hf_lan_global():
     expecting = np.array([0.56175431, -0.30002709, -0.28602105, -0.28335086, -0.26832878,  0.13681904,  0.14535691,  0.14206876,  0.15097682])
     check_msa_hf_lan('h', expecting, local=False)
 
 
+@attr('slow')
 def test_hirshfeld_i_msa_hf_lan_local():
     expecting = np.array([1.14305602, -0.52958298, -0.51787452, -0.51302759, -0.50033981, 0.21958586, 0.23189187, 0.22657354, 0.23938904])
     check_msa_hf_lan('hi', expecting, local=True)
 
 
+@attr('slow')
 def test_hirshfeld_i_msa_hf_lan_global():
     expecting = np.array([1.14305602, -0.52958298, -0.51787452, -0.51302759, -0.50033981, 0.21958586, 0.23189187, 0.22657354, 0.23938904])
     check_msa_hf_lan('hi', expecting, local=False)
 
 
-def test_hirshfeld_i_msa_hf_lan_local_greedy():
-    expecting = np.array([1.14305602, -0.52958298, -0.51787452, -0.51302759, -0.50033981, 0.21958586, 0.23189187, 0.22657354, 0.23938904])
-    check_msa_hf_lan('hi', expecting, local=True, greedy=True)
-
-
-def test_hirshfeld_i_msa_hf_lan_global_greedy():
-    expecting = np.array([1.14305602, -0.52958298, -0.51787452, -0.51302759, -0.50033981, 0.21958586, 0.23189187, 0.22657354, 0.23938904])
-    check_msa_hf_lan('hi', expecting, local=False, greedy=True)
-
-
-def test_hirshfeld_e_msa_hf_lan_local():
-    expecting = np.array([1.06135407, -0.51795437, -0.50626239, -0.50136175, -0.48867641, 0.22835963, 0.240736, 0.23528162, 0.24816043])
-    check_msa_hf_lan('he', expecting, local=True)
-
-
-def test_hirshfeld_e_msa_hf_lan_global():
-    expecting = np.array([1.06135407, -0.51795437, -0.50626239, -0.50136175, -0.48867641, 0.22835963, 0.240736, 0.23528162, 0.24816043])
-    check_msa_hf_lan('he', expecting, local=False)
-
-
-def test_hirshfeld_e_msa_hf_lan_local_greedy():
-    expecting = np.array([1.06135407, -0.51795437, -0.50626239, -0.50136175, -0.48867641, 0.22835963, 0.240736, 0.23528162, 0.24816043])
-    check_msa_hf_lan('he', expecting, local=True, greedy=True)
-
-
-def test_hirshfeld_e_msa_hf_lan_global_greedy():
-    expecting = np.array([1.06135407, -0.51795437, -0.50626239, -0.50136175, -0.48867641, 0.22835963, 0.240736, 0.23528162, 0.24816043])
-    check_msa_hf_lan('he', expecting, local=False, greedy=True)
-
-
+@attr('slow')
 def test_is_msa_hf_lan():
     expecting = np.array([1.1721364, -0.5799622, -0.5654549, -0.5599638, -0.5444145, 0.2606699, 0.2721848, 0.2664377, 0.2783666]) # from HiPart
     check_msa_hf_lan('is', expecting, needs_padb=False)

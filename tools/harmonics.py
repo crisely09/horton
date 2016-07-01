@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -18,7 +18,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
+# --
 """Tools to define the relations between pure and Cartesian gaussian functions.
 
    This module uses sympy for the symbolic manipulations.
@@ -46,7 +46,7 @@ def get_cart_orb_norm(alpha, nx, ny, nz):
     """Returns the norm of a Cartesian gaussian funcion"""
     return sqrt(
         int(fac2(2*nx-1)*fac2(2*ny-1)*fac2(2*nz-1))
-        /(2*alpha/pi)**1.5
+        /(2*alpha/pi)**(3/S(2))
         /(4*alpha)**(nx+ny+nz)
     )
 
@@ -55,7 +55,7 @@ def get_pure_orb_norm(alpha, l):
     """Returns the norm of a pure gaussian funcion"""
     return sqrt(
         int(fac2(2*l-1))
-        /(2*alpha/pi)**1.5
+        /(2*alpha/pi)**(3/S(2))
         /(4*alpha)**l
     )
 

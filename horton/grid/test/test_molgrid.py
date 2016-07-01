@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -17,13 +17,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
-#pylint: skip-file
+# --
 
 
 import numpy as np, h5py as h5
 
-from horton import *
+from horton import *  # pylint: disable=wildcard-import,unused-wildcard-import
 
 
 
@@ -69,6 +68,17 @@ def test_integrate_hydrogen_trimer_1s():
     fn = np.exp(-2*dist0)/np.pi + np.exp(-2*dist1)/np.pi + np.exp(-2*dist2)/np.pi
     occupation = mg.integrate(fn)
     assert abs(occupation - 3.0) < 1e-3
+
+
+def test_all_elements():
+    numbers = np.array([1, 118], int)
+    coordinates = np.array([[0.0, 0.0, -1.0], [0.0, 0.0, 1.0]], float)
+    rtf = ExpRTransform(1e-3, 1e1, 10)
+    rgrid = RadialGrid(rtf)
+    while numbers[0] < numbers[1]:
+        BeckeMolGrid(coordinates, numbers, None, (rgrid, 110), random_rotate=False)
+        numbers[0] += 1
+        numbers[1] -= 1
 
 
 def test_molgrid_attrs_subgrid():

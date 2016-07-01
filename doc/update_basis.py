@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -18,16 +18,21 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
+# --
 
 
 from glob import glob
 from cStringIO import StringIO
 import os
-from horton import periodic
+from horton.periodic import periodic
+from horton.log import log
 from horton.gbasis.gobasis import go_basis_families_list
 
 from common import write_rst_table, write_if_changed
+
+
+log.set_level(log.silent)
+
 
 table = [['Basis set name', 'Supported elements']]
 for family in go_basis_families_list:

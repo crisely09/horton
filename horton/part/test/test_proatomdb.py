@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -17,19 +17,18 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
-#pylint: skip-file
+# --
 
 
 import numpy as np, h5py as h5
 
-from horton import *
+from horton import *  # pylint: disable=wildcard-import,unused-wildcard-import
 from horton.part.test.common import get_proatomdb_cp2k
 from horton.test.common import tmpdir
 
 
 def test_db_basics():
-    padb = ProAtomDB.from_refatoms(numbers=[8, 1], max_kation=1, max_anion=1)
+    padb = ProAtomDB.from_refatoms(numbers=[8, 1], max_cation=1, max_anion=1)
     assert padb.get_numbers() == [1, 8]
     assert padb.get_charges(8) == [1, 0, -1]
     assert padb.get_charges(1) == [0, -1]
@@ -100,7 +99,7 @@ def compare_padbs(padb1, padb2):
 
 
 def test_io_group():
-    padb1 = ProAtomDB.from_refatoms(numbers=[1, 6], max_kation=1, max_anion=1)
+    padb1 = ProAtomDB.from_refatoms(numbers=[1, 6], max_cation=1, max_anion=1)
     assert padb1.size == 5
     keys = sorted(padb1._map.keys())
     assert keys == [(1, -1), (1, 0), (6, -1), (6, 0), (6, +1)]
@@ -112,7 +111,7 @@ def test_io_group():
 
 
 def test_io_filename():
-    padb1 = ProAtomDB.from_refatoms(numbers=[1, 6], max_kation=1, max_anion=0)
+    padb1 = ProAtomDB.from_refatoms(numbers=[1, 6], max_cation=1, max_anion=0)
     keys = sorted(padb1._map.keys())
     assert keys == [(1, 0), (6, 0), (6, 1)]
 
@@ -170,7 +169,7 @@ def check_spline_mono_decr(spline):
 
 
 def test_get_spline():
-    padb = ProAtomDB.from_refatoms(numbers=[1, 6], max_kation=1, max_anion=1)
+    padb = ProAtomDB.from_refatoms(numbers=[1, 6], max_cation=1, max_anion=1)
 
     spline = padb.get_spline(6)
     check_spline_pop(spline, 6.0)

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
+# --
 '''C++ extensions'''
 
 
@@ -52,19 +52,18 @@ __all__ = [
     'becke_helper_atom',
     # cubic_spline
     'Extrapolation', 'ZeroExtrapolation', 'CuspExtrapolation',
-    'PowerExtrapolation', 'tridiagsym_solve', 'CubicSpline',
+    'PowerExtrapolation', 'PotentialExtrapolation', 'tridiagsym_solve', 'CubicSpline',
     'compute_cubic_spline_int_weights',
     # evaluate
-    'index_wrap', 'eval_spline_cube', 'eval_spline_grid',
-    'eval_decomposition_grid',
+    'index_wrap', 'eval_spline_grid', 'eval_decomposition_grid',
     # ode2
     'hermite_overlap2', 'hermite_overlap3', 'hermite_node', 'hermite_product2',
     'build_ode2',
     # rtransform
     'RTransform', 'IdentityRTransform', 'LinearRTransform', 'ExpRTransform',
-    'ShiftedExpRTransform', 'PowerRTransform',
+    'PowerRTransform', 'HyperbolicRTransform',
     # UniformGrid
-    'UniformGrid', 'UniformGridWindow', 'index_wrap', 'Block3Iterator',
+    'UniformGrid', 'index_wrap',
     # utils
     'dot_multi', 'dot_multi_moments_cube', 'dot_multi_moments',
 ]
@@ -204,8 +203,6 @@ def tridiagsym_solve(np.ndarray[double, ndim=1] diag_mid not None,
 
 
 cdef class Extrapolation(object):
-    cdef cubic_spline.Extrapolation* _this
-
     def __dealloc__(self):
         del self._this
 
@@ -246,6 +243,11 @@ cdef class Extrapolation(object):
                 raise ValueError('PowerExtrapolation takes one argument.')
             power = float(words[1])
             return PowerExtrapolation(power)
+        elif words[0] == 'PotentialExtrapolation':
+            if len(words) != 2:
+                raise ValueError('PotentialExtrapolation takes one argument.')
+            l = int(words[1])
+            return PotentialExtrapolation(l)
         else:
             raise NotImplementedError
 
@@ -268,12 +270,36 @@ cdef class PowerExtrapolation(Extrapolation):
         self._this = <cubic_spline.Extrapolation*>(new cubic_spline.PowerExtrapolation(power))
 
     property power:
-        '''The power parameters'''
+        '''The power parameter'''
         def __get__(self):
             return (<cubic_spline.PowerExtrapolation*>self._this).get_power()
 
     def to_string(self):
         return 'PowerExtrapolation %s' % repr(self.power)
+
+
+cdef class PotentialExtrapolation(Extrapolation):
+    """Zero at the right side, power law at the left side"""
+    def __cinit__(self, long l):
+        self._this = <cubic_spline.Extrapolation*>(new cubic_spline.PotentialExtrapolation(l))
+
+    property l:
+        """The angular momentum parameter"""
+        def __get__(self):
+            return (<cubic_spline.PotentialExtrapolation*>self._this).get_l()
+
+    property amp_left:
+        """The amplitude of the polynomial on the left side"""
+        def __get__(self):
+            return (<cubic_spline.PotentialExtrapolation*>self._this).get_amp_left()
+
+    property amp_right:
+        """The amplitude of the polynomial on the right side"""
+        def __get__(self):
+            return (<cubic_spline.PotentialExtrapolation*>self._this).get_amp_right()
+
+    def to_string(self):
+        return 'PotentialExtrapolation %s' % repr(self.l)
 
 
 cdef class CubicSpline(object):
@@ -300,12 +326,6 @@ cdef class CubicSpline(object):
             the interval determined by the 1D grid. By default,
             CuspExtrapolation() is used.
     '''
-    cdef cubic_spline.CubicSpline* _this
-    cdef Extrapolation _extrapolation
-    cdef RTransform _rtransform
-    cdef np.ndarray _y
-    cdef np.ndarray _dx
-    cdef np.ndarray _dt
 
     def __cinit__(self,
                   np.ndarray[double, ndim=1] y not None,
@@ -460,41 +480,6 @@ def compute_cubic_spline_int_weights(np.ndarray[double, ndim=1] weights not None
 def index_wrap(long i, long high):
     return evaluate.index_wrap(i, high)
 
-
-def eval_spline_cube(CubicSpline spline not None,
-                     np.ndarray[double, ndim=1] center not None,
-                     np.ndarray[double, ndim=3] output not None,
-                     UniformGrid ugrid not None):
-    '''Evaluate a spherically symmetric function on a uniform grid
-
-       **Arguments:**
-
-       spline
-            The cubic spline that contains the radial dependence of the
-            spherically symmetric function.
-
-       center
-            The center of the spherically symmetric function.
-
-       output
-            The output array in which the result is stored.
-
-       ugrid
-            An instance of UniformGrid that specifies the grid points.
-
-       Note that, in case of periodic boundary conditions in the ugrid object,
-       and when the spline as a non-zero tail, this routine may give
-       inaccurate/incorrect results.
-    '''
-    assert center.flags['C_CONTIGUOUS']
-    assert center.shape[0] == 3
-    assert output.flags['C_CONTIGUOUS']
-    assert output.shape[0] == ugrid.shape[0]
-    assert output.shape[1] == ugrid.shape[1]
-    assert output.shape[2] == ugrid.shape[2]
-
-    evaluate.eval_spline_cube(spline._this, &center[0], &output[0, 0, 0],
-                              ugrid._this)
 
 def eval_spline_grid(CubicSpline spline not None,
                      np.ndarray[double, ndim=1] center not None,
@@ -712,7 +697,6 @@ cdef class RTransform(object):
        the actual grid points on the r-axis: f(0), f(1), f(2), ... f(npoint-1).
        Different implementation for the function f are available.
     '''
-    cdef rtransform.RTransform* _this
 
     property npoint:
         def __get__(self):
@@ -911,14 +895,6 @@ cdef class RTransform(object):
             rmax = float(args[1])
             npoint = int(args[2])
             return ExpRTransform(rmin, rmax, npoint)
-        elif clsname == 'ShiftedExpRTransform':
-            if len(args) != 4:
-                raise ValueError('The ShiftedExpRTransform needs four arguments, got %i.' % len(words))
-            rmin = float(args[0])
-            rshift = float(args[1])
-            rmax = float(args[2])
-            npoint = int(args[3])
-            return ShiftedExpRTransform(rmin, rshift, rmax, npoint)
         elif clsname == 'PowerRTransform':
             if len(args) != 3:
                 raise ValueError('The PowerRTransform needs three arguments, got %i.' % len(words))
@@ -926,6 +902,13 @@ cdef class RTransform(object):
             rmax = float(args[1])
             npoint = int(args[2])
             return PowerRTransform(rmin, rmax, npoint)
+        elif clsname == 'HyperbolicRTransform':
+            if len(args) != 3:
+                raise ValueError('The HyperbolicRTransform needs three arguments, got %i.' % len(words))
+            a = float(args[0])
+            b = float(args[1])
+            npoint = int(args[2])
+            return HyperbolicRTransform(a, b, npoint)
         else:
             raise TypeError('Unkown RTransform subclass: %s' % clsname)
 
@@ -1047,52 +1030,6 @@ cdef class ExpRTransform(RTransform):
         return ExpRTransform(rmin, self.rmax, self.npoint/2)
 
 
-cdef class ShiftedExpRTransform(RTransform):
-    r'''A shifted exponential grid.
-
-       The grid points are distributed as follows:
-
-       .. math:: r_i = r_0 \alpha^i - r_s
-
-       with
-
-       .. math::
-            r_0 = r_{N-1} + r_s
-
-       .. math::
-            \alpha = \log\left(\frac{r_{N-1}+r_s}{r_0}\right)/(N-1).
-    '''
-    def __cinit__(self, double rmin, double rshift, double rmax, int npoint):
-        self._this = <rtransform.RTransform*>(new rtransform.ShiftedExpRTransform(rmin, rshift, rmax, npoint))
-
-    property rmin:
-        def __get__(self):
-            return (<rtransform.ShiftedExpRTransform*>self._this).get_rmin()
-
-    property rshift:
-        def __get__(self):
-            return (<rtransform.ShiftedExpRTransform*>self._this).get_rshift()
-
-    property rmax:
-        def __get__(self):
-            return (<rtransform.ShiftedExpRTransform*>self._this).get_rmax()
-
-    property r0:
-        def __get__(self):
-            return (<rtransform.ShiftedExpRTransform*>self._this).get_r0()
-
-    property alpha:
-        def __get__(self):
-            return (<rtransform.ShiftedExpRTransform*>self._this).get_alpha()
-
-    def to_string(self):
-        return ' '.join(['ShiftedExpRTransform', repr(self.rmin), repr(self.rshift), repr(self.rmax), repr(self.npoint)])
-
-    def chop(self, npoint):
-        rmax = self.radius(npoint-1)
-        return ShiftedExpRTransform(self.rmin, self.rshift, rmax, npoint)
-
-
 cdef class PowerRTransform(RTransform):
     r'''A power grid.
 
@@ -1138,6 +1075,32 @@ cdef class PowerRTransform(RTransform):
         return StubIntegrator1D()
 
 
+cdef class HyperbolicRTransform(RTransform):
+    r'''A Hyperbolic grid (as in the GPAW program).
+
+       The grid points are distributed as follows:
+
+       .. math:: r_i = \frac{ai}{1 - bi}
+    '''
+    def __cinit__(self, double a, double b, int npoint):
+        self._this = <rtransform.RTransform*>(new rtransform.HyperbolicRTransform(a, b, npoint))
+
+    property a:
+        def __get__(self):
+            return (<rtransform.HyperbolicRTransform*>self._this).get_a()
+
+    property b:
+        def __get__(self):
+            return (<rtransform.HyperbolicRTransform*>self._this).get_b()
+
+    def to_string(self):
+        return ' '.join(['HyperbolicRTransform', repr(self.a), repr(self.b), repr(self.npoint)])
+
+    def get_default_int1d(self):
+        from horton.grid.int1d import StubIntegrator1D
+        return StubIntegrator1D()
+
+
 #
 # uniform
 #
@@ -1157,10 +1120,30 @@ cdef class UniformGrid(object):
         assert shape.shape[0] == 3
         assert pbc.flags['C_CONTIGUOUS']
         assert pbc.shape[0] == 3
-
         self._this = <uniform.UniformGrid*>(new uniform.UniformGrid(
             &origin[0], &grid_rvecs[0, 0], &shape[0], &pbc[0],
         ))
+
+    def __init__(self, np.ndarray[double, ndim=1] origin not None,
+                 np.ndarray[double, ndim=2] grid_rvecs not None,
+                 np.ndarray[long, ndim=1] shape not None,
+                 np.ndarray[long, ndim=1] pbc not None):
+        """__init__(self, ndarray origin, ndarray grid_rvecs, ndarray shape, ndarray pbc)
+        Initialize a UniformGrid instance.
+
+        Parameters
+        ----------
+        origin : np.ndarray[double, ndim=1]
+                 The origin of the uniform grid, where the first grid point is located.
+                 shape=(3,)
+        grid_rvecs : np.ndarray[double, ndim=2]
+                     The rows are real-space basis vectors that define the spacings.
+                     between the grids. shape=(3,3)
+        shape : np.ndarray[long, ndim=1]
+                The shape of the uniform grid, i.e. number of points along each basis.
+        pbc : np.ndarray[long, ndim=1]
+              Three flags (0 or 1) for periodicity along each row in grid_rvecs.
+        """
 
     def __dealloc__(self):
         del self._this
@@ -1229,18 +1212,6 @@ cdef class UniformGrid(object):
 
     def zeros(self):
         return np.zeros(self.shape, float)
-
-    def eval_spline(self, CubicSpline spline not None,
-                    np.ndarray[double, ndim=1] center not None,
-                    np.ndarray[double, ndim=3] output not None):
-        assert center.flags['C_CONTIGUOUS']
-        assert center.shape[0] == 3
-        assert output.flags['C_CONTIGUOUS']
-        assert output.shape[0] == self.shape[0]
-        assert output.shape[1] == self.shape[1]
-        assert output.shape[2] == self.shape[2]
-
-        evaluate.eval_spline_cube(spline._this, &center[0], &output[0, 0, 0], self._this)
 
     def integrate(self, *args):
         '''Integrate the product of all arguments
@@ -1321,376 +1292,10 @@ cdef class UniformGrid(object):
         self._this.delta_grid_point(&result[0], &indexes[0])
         return result
 
-    def compute_weight_corrections(self, funcs, rcut_scale=0.9, rcut_max=2.0, rcond=0.1, output=None):
-        '''Computes corrections to the integration weights.
-
-           **Arguments:**
-
-           funcs
-                A collection of functions that must integrate exactly with the
-                corrected weights. The format is as follows. ``funcs`` is a
-                list with tuples that contain three items:
-
-                * center: the center for a set of spherically symmetric
-                  functions. In pracice, this will always coincide with th
-                  position of a nucleus.
-
-                * Radial functions specified as a list of splines.
-
-           **Optional arguments:**
-
-           rcut_scale
-                For center (of a spherical function), radii of non-overlapping
-                spheres are determined by setting the radius of each sphere at
-                0.5*rcut_scale*(distance to nearest atom or periodic image).
-
-           rcut_max
-                To avoid gigantic cutoff spheres, one may use rcut_max to set
-                the maximum radius of the cutoff sphere.
-
-           rcond
-                The regulatization strength for the weight correction equations.
-                This should not be too low. Current value is a compromise
-                between accuracy and transferability of the weight corrections.
-
-           **Return value:**
-
-           The return value is a data array that can be provided as an
-           additional argument to the ``integrate`` method. This should
-           improve the accuracy of the integration for data that is similar
-           to a linear combination of the provided sphericall functions.
-        '''
-        from horton.grid.int1d import SimpsonIntegrator1D
-
-        if output is None:
-            output = np.ones(self.shape, float)
-        else:
-            output[:] = 1.0
-        cell = self.get_cell()
-        grid_cell = self.get_grid_cell()
-        volume = grid_cell.volume
-
-        # initialize cutoff radii
-        if cell.nvec > 0:
-            rcut_max = min(rcut_max, 0.5*rcut_scale*cell.rspacings.min())
-        rcuts = np.zeros(len(funcs)) + rcut_max
-
-        # determine safe cutoff radii
-        for i0 in xrange(len(funcs)):
-            center0, rcut0 = funcs[i0][:2]
-            for i1 in xrange(i0):
-                center1, rcut1 = funcs[i1][:2]
-                delta = center1 - center0
-                cell.mic(delta)
-                dist = np.linalg.norm(delta)
-                rcut = 0.5*rcut_scale*dist
-                rcuts[i0] = min(rcut, rcuts[i0])
-                rcuts[i1] = min(rcut, rcuts[i1])
-
-        def get_aux_grid(center, aux_rcut):
-            ranges_begin, ranges_end = grid_cell.get_ranges_rcut(self.origin-center, aux_rcut)
-            aux_origin = self.origin.copy()
-            grid_cell.add_rvec(aux_origin, ranges_begin)
-            aux_shape = ranges_end - ranges_begin
-            aux_grid = UniformGrid(aux_origin, grid_cell.rvecs, aux_shape, np.zeros(3, int))
-            return aux_grid, -ranges_begin
-
-        def get_tapered_spline(spline, rcut, aux_rcut):
-            assert rcut < aux_rcut
-            rtf = spline.rtransform
-            r = rtf.get_radii()
-            # Get original spline stuff
-            y = spline.y
-            d = spline.dx
-            # adapt cutoffs to indexes of radial grid
-            ibegin = r.searchsorted(rcut)
-            iend = r.searchsorted(aux_rcut)-1
-            rcut = r[ibegin]
-            aux_rcut = r[iend]
-            # define tapering function
-            sy = np.zeros(len(r))
-            sd = np.zeros(len(r))
-            sy[:ibegin] = 1.0
-            scale = np.pi/(aux_rcut-rcut)
-            x = scale*(r[ibegin:iend+1]-rcut)
-            sy[ibegin:iend+1] = 0.5*(np.cos(x)+1)
-            sd[ibegin:iend+1] = -0.5*(np.sin(x))*scale
-            # construct product
-            ty = y*sy
-            td = d*sy+y*sd
-            # construct spline
-            tapered_spline = CubicSpline(ty, td, rtf)
-            # compute integral
-            int1d = SimpsonIntegrator1D()
-            int_exact = 4*np.pi*dot_multi(
-                ty, r, r, int1d.get_weights(len(r)), rtf.get_deriv()
-            )
-            # done
-            return tapered_spline, int_exact
-
-        icenter = 0
-        for (center, splines), rcut in zip(funcs, rcuts):
-            # A) Determine the points inside the cutoff sphere.
-            ranges_begin, ranges_end = grid_cell.get_ranges_rcut(self.origin-center, rcut)
-
-            # B) Construct a set of grid indexes that lie inside the sphere.
-            nselect_max = np.product(ranges_end-ranges_begin)
-            indexes = np.zeros((nselect_max, 3), int)
-            nselect = grid_cell.select_inside(self.origin, center, rcut, ranges_begin, ranges_end, self.shape, self.pbc, indexes)
-            indexes = indexes[:nselect]
-
-            # C) Set up an integration grid for the tapered spline
-            aux_rcut = 2*rcut
-            aux_grid, aux_offset = get_aux_grid(center, aux_rcut)
-            aux_indexes = (indexes + aux_offset) % self.shape
-
-            # D) Allocate the arrays for the least-squares fit of the
-            # corrections.
-            neq = len(splines)
-            dm = np.zeros((neq+1, nselect), float)
-            ev = np.zeros(neq+1, float)
-
-            # E) Fill in the coefficients. This is the expensive part.
-            ieq = 0
-            tmp = np.zeros(aux_grid.shape)
-            av = np.zeros(neq+1)
-            for spline in splines:
-                if log.do_medium:
-                    log("Computing spherical function. icenter=%i ieq=%i" % (icenter, ieq))
-                tapered_spline, int_exact = get_tapered_spline(spline, rcut, aux_rcut)
-                tmp[:] = 0.0
-                aux_grid.eval_spline(tapered_spline, center, tmp)
-                int_approx = self.integrate(tmp)
-                dm[ieq] = volume*tmp[aux_indexes[:,0], aux_indexes[:,1], aux_indexes[:,2]]
-                av[ieq] = int_approx
-                ev[ieq] = int_exact - int_approx
-                ieq += 1
-
-            # Add error on constant function
-            dm[neq] = volume
-            av[neq] = 0.0
-            ev[neq] = 0.0
-
-            # rescale equations to optimize condition number
-            scales = np.sqrt((dm**2).mean(axis=1))
-            dm /= scales.reshape(-1,1)
-            ev /= scales
-            av /= scales
-
-            # E) Find a regularized least norm solution.
-            U, S, Vt = np.linalg.svd(dm, full_matrices=False)
-            ridge = rcond*S[0]
-            Sinv = S/(ridge**2+S**2)
-            corrections = np.dot(Vt.T, np.dot(U.T, ev)*Sinv)
-
-            # constrain the solution to integrate constant function exactly
-            HtVSinv = Vt.sum(axis=1)*Sinv
-            mu = corrections.sum()/np.dot(HtVSinv,HtVSinv)
-            corrections -= mu*np.dot(Vt.T, Vt.sum(axis=1)*Sinv**2)
-
-            if log.do_medium:
-                rmsd = np.sqrt((corrections**2).mean())
-                log('icenter=%i NSELECT=%i CN=%.3e RMSD=%.3e' % (icenter, nselect, S[0]/S[-1], rmsd))
-                mv = np.dot(dm, corrections)
-                for ieq in xrange(neq):
-                    log('   spline %3i    error %+.3e   orig %+.3e  exact %+.3e' % (ieq, ev[ieq]-mv[ieq], ev[ieq], ev[ieq]+av[ieq]))
-                log('   constant      error %+.3e' % corrections.sum())
-
-            # F) Fill the corrections into the right place:
-            output[indexes[:,0], indexes[:,1], indexes[:,2]] += corrections
-
-            icenter += 1
-
-        return output
-
-    def get_window(self, np.ndarray[double, ndim=1] center not None, double rcut):
-        begin, end = self.get_ranges_rcut(center, rcut)
-        return UniformGridWindow(self, begin, end)
-
-
-cdef class UniformGridWindow(object):
-    def __cinit__(self, UniformGrid ugrid not None,
-                  np.ndarray[long, ndim=1] begin not None,
-                  np.ndarray[long, ndim=1] end not None):
-        assert begin.flags['C_CONTIGUOUS']
-        assert begin.shape[0] == 3
-        assert end.flags['C_CONTIGUOUS']
-        assert end.shape[0] == 3
-
-        self._ugrid = ugrid
-        self._this = new uniform.UniformGridWindow(
-            ugrid._this,
-            &begin[0],
-            &end[0],
-        )
-
-    def __dealloc__(self):
-        del self._this
-
-    property ugrid:
-        def __get__(self):
-            return self._ugrid
-
-    property begin:
-        def __get__(self):
-            cdef np.npy_intp dims[1]
-            dims[0] = 3
-            cdef np.ndarray result = np.PyArray_SimpleNewFromData(1, dims, np.NPY_LONG, self._this.begin)
-            np.set_array_base(result, self)
-            return result
-
-    property end:
-        def __get__(self):
-            cdef np.npy_intp dims[1]
-            dims[0] = 3
-            cdef np.ndarray result = np.PyArray_SimpleNewFromData(1, dims, np.NPY_LONG, self._this.end)
-            np.set_array_base(result, self)
-            return result
-
-    property shape:
-        def __get__(self):
-            return self.end - self.begin
-
-    property size:
-        def __get__(self):
-            return np.product(self.shape)
-
-    def get_window_ugrid(self):
-        grid_rvecs = self._ugrid.grid_rvecs
-        origin = self._ugrid.origin.copy() + np.dot(self.begin, grid_rvecs)
-        return UniformGrid(origin, grid_rvecs, self.shape, np.zeros(3, int))
-
-    def zeros(self):
-        return np.zeros(self.shape, float)
-
-    def extend(self, np.ndarray[double, ndim=3] cell not None,
-               np.ndarray[double, ndim=3] local not None):
-        '''Copy a periodic repetation of the cell function to the local grid'''
-        assert cell.flags['C_CONTIGUOUS']
-        shape = self._ugrid.shape
-        assert cell.shape[0] == shape[0]
-        assert cell.shape[1] == shape[1]
-        assert cell.shape[2] == shape[2]
-        assert local.flags['C_CONTIGUOUS']
-        shape = self.shape
-        assert local.shape[0] == shape[0]
-        assert local.shape[1] == shape[1]
-        assert local.shape[2] == shape[2]
-        self._this.extend(&cell[0, 0, 0], &local[0, 0, 0])
-
-    def wrap(self, np.ndarray[double, ndim=3] local not None,
-                   np.ndarray[double, ndim=3] cell not None):
-        '''Write the local function to the periodic array, wrapping around the edges'''
-        assert local.flags['C_CONTIGUOUS']
-        shape = self.shape
-        assert local.shape[0] == shape[0]
-        assert local.shape[1] == shape[1]
-        assert local.shape[2] == shape[2]
-        assert cell.flags['C_CONTIGUOUS']
-        shape = self._ugrid.shape
-        assert cell.shape[0] == shape[0]
-        assert cell.shape[1] == shape[1]
-        assert cell.shape[2] == shape[2]
-        self._this.wrap(&local[0, 0, 0], &cell[0, 0, 0])
-
-    def eval_spline(self, CubicSpline spline not None,
-                    np.ndarray[double, ndim=1] center not None,
-                    np.ndarray[double, ndim=3] output not None):
-        assert center.flags['C_CONTIGUOUS']
-        assert center.shape[0] == 3
-        assert output.flags['C_CONTIGUOUS']
-        assert output.shape[0] == self.shape[0]
-        assert output.shape[1] == self.shape[1]
-        assert output.shape[2] == self.shape[2]
-
-        # construct an ugrid for this window such that we can reuse an existing routine
-        cdef UniformGrid window_ugrid = self.get_window_ugrid()
-        evaluate.eval_spline_cube(spline._this, &center[0], &output[0, 0, 0], window_ugrid._this)
-
-    def integrate(self, *args, **kwargs):
-        '''Integrate the product of all arguments
-
-           **Arguments:**
-
-           data1, data2, ...
-                All arguments must be arrays with the same size as the number
-                of grid points. The arrays contain the functions, evaluated
-                at the grid points, that must be multiplied and integrated.
-
-           **Optional arguments:**
-
-           center=None
-                When given, multipole moments are computed with respect to
-                this center instead of a plain integral.
-
-           lmax=0
-                The maximum angular momentum to consider when computing multipole
-                moments
-
-           mtype=1
-                The type of multipole moments: 1=``cartesian``, 2=``pure``,
-                3=``radial``, 4=``surface``.
-        '''
-        args, multipole_args, segments = parse_args_integrate(*args, **kwargs)
-        if segments is not None:
-            raise TypeError('Unexpected argument: segments')
-
-        volume = abs(np.linalg.det(self._ugrid.grid_rvecs))
-        if multipole_args is None:
-            # regular integration
-            return dot_multi(*args)*volume
-        else:
-            # computation of multipole expansion of the integrand
-            center, lmax, mtype = multipole_args
-            window_ugrid = self.get_window_ugrid()
-            return dot_multi_moments_cube(args, window_ugrid, center, lmax, mtype)*volume
-
-    def compute_weight_corrections(self, funcs, rcut_scale=0.9, rcut_max=2.0, rcond=0.1, output=None):
-        window_ugrid = self.get_window_ugrid()
-        return window_ugrid.compute_weight_corrections(funcs, rcut_scale, rcut_max, rcond, output)
-
 
 def index_wrap(long i, long high):
     return uniform.index_wrap(i, high)
 
-
-cdef class Block3Iterator(object):
-    '''Wrapper for testing only'''
-    cdef uniform.Block3Iterator* _this
-    cdef np.ndarray _begin
-    cdef np.ndarray _end
-    cdef np.ndarray _shape
-
-    def __cinit__(self, np.ndarray[long, ndim=1] begin not None,
-                  np.ndarray[long, ndim=1] end not None,
-                  np.ndarray[long, ndim=1] shape not None):
-        assert begin.flags['C_CONTIGUOUS']
-        assert begin.shape[0] == 3
-        assert end.flags['C_CONTIGUOUS']
-        assert end.shape[0] == 3
-        assert shape.flags['C_CONTIGUOUS']
-        assert shape.shape[0] == 3
-
-        self._begin = begin
-        self._end = end
-        self._shape = shape
-        self._this = new uniform.Block3Iterator(
-            &begin[0],
-            &end[0],
-            &shape[0],
-        )
-
-    property block_begin:
-        def __get__(self):
-            cdef np.ndarray[long, ndim=1] result = np.zeros(3, int)
-            self._this.copy_block_begin(&result[0])
-            return result
-
-    property block_end:
-        def __get__(self):
-            cdef np.ndarray[long, ndim=1] result = np.zeros(3, int)
-            self._this.copy_block_end(&result[0])
-            return result
 
 #
 # utils

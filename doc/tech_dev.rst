@@ -1,6 +1,6 @@
 ..
     : HORTON: Helpful Open-source Research TOol for N-fermion systems.
-    : Copyright (C) 2011-2015 The HORTON Development Team
+    : Copyright (C) 2011-2016 The HORTON Development Team
     :
     : This file is part of HORTON.
     :
@@ -26,8 +26,8 @@ Developer Documentation
 .. toctree::
    :maxdepth: 3
 
-   tech_dev_coding_guidelines
    tech_dev_git
+   tech_dev_checklist
    tech_dev_documentation
    tech_dev_unit_tests
    tech_dev_examples

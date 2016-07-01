@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -18,7 +18,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
+# --
 
 
 import argparse, os, numpy as np
@@ -78,10 +78,6 @@ def parse_args():
         help='The iterative scheme is converged when the maximum change of '
              'the charges between two iterations drops below this threshold. '
              '[default=%(default)s]')
-    parser.add_argument('--greedy', default=False, action='store_true',
-        help='Keep more precomputed results in memory. This speeds up the '
-             'partitioning but consumes more memory. It is only applicable to '
-             'the Hirshfeld-I (hi) and Hirhfeld-E (he) schemes.')
     parser.add_argument('--lmax', default=3, type=int,
         help='The maximum angular momentum to consider in multipole expansions')
     parser.add_argument('--slow', default=False, action='store_true',

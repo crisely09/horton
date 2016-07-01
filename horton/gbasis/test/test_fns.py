@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -17,14 +17,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
-#pylint: skip-file
+# --
 
 
 import numpy as np
+from nose.plugins.attrib import attr
 from nose.tools import assert_raises
 
-from horton import *
+from horton import *  # pylint: disable=wildcard-import,unused-wildcard-import
 
 
 def test_exceptions():
@@ -456,13 +456,16 @@ def test_dm_kinetic_n2_sto3g():
 def test_dm_kinetic_h3_321g():
     check_dm_kinetic('test/h3_pbe_321g.fchk', 5e-5)
 
+@attr('slow')
 def test_dm_kinetic_co_ccpv5z_cart():
     check_dm_kinetic('test/co_ccpv5z_cart_hf_g03.fchk', 4e-4)
 
+@attr('slow')
 def test_dm_kinetic_co_ccpv5z_pure():
     check_dm_kinetic('test/co_ccpv5z_pure_hf_g03.fchk', 4e-4)
 
 
+@attr('slow')
 def test_kinetic_functional_deriv():
     fn_fchk = context.get_fn('test/n2_hfs_sto3g.fchk')
     mol = IOData.from_file(fn_fchk)

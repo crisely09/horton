@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -18,7 +18,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
+# --
 
 
 import importlib, os
@@ -65,7 +65,7 @@ def get_first_doxygenline(fn_h):
         for line in f:
             if line.startswith('// UPDATELIBDOCTITLE:'):
                 return line[21:].strip()
-        return 'FIXME: Missing UPDATELIBDOCTITLE'
+        raise IOError('UPDATELIBDOCTITLE missing in %s' % fn_h)
 
 
 def underline(line, char, f):

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
+# --
 '''Input/output dispatcher for different file formats
 
    The ``IOData.from_file`` and ``IOData.to_file`` methods read/write data
@@ -26,7 +26,8 @@
 '''
 
 
-from horton.matrix import DenseLinalgFactory, LinalgObject
+from horton.matrix.dense import DenseLinalgFactory
+from horton.matrix.base import LinalgObject
 import h5py as h5, os, numpy as np
 
 
@@ -83,7 +84,7 @@ class ArrayTypeCheckDescriptor(object):
         if obj is None:
             return self
         if self._default is not None and not hasattr(obj, '_' + self._name):
-            return getattr(obj, '_' + self._default).astype(self._dtype)
+            setattr(obj, '_' + self._name, (getattr(obj, '_' + self._default).astype(self._dtype)))
         return getattr(obj, '_' + self._name)
 
     def __set__(self, obj, value):

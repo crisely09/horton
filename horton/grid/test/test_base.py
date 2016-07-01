@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -17,14 +17,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
-#pylint: skip-file
+# --
 
 
 import numpy as np
-from horton import *
+
+from horton import *  # pylint: disable=wildcard-import,unused-wildcard-import
+
 from horton.grid.test.common import get_cosine_spline
-from horton.test.common import get_random_cell
+from horton.test.common import get_random_cell, numpy_seed
 
 
 def test_grid_integrate():
@@ -303,17 +304,18 @@ def test_eval_spline_grid_add_random():
     npoint = 10
     cs = get_cosine_spline()
 
-    for i in xrange(10):
-        cell = get_random_cell(1.0, np.random.randint(4))
-        points = np.random.normal(-2, 3, (npoint,3))
-        g = IntGrid(points, np.random.normal(0, 1.0, npoint))
+    for irep in xrange(10):
+        with numpy_seed(irep):
+            cell = get_random_cell(1.0, irep % 4)
+            points = np.random.normal(-2, 3, (npoint,3))
+            g = IntGrid(points, np.random.normal(0, 1.0, npoint))
+            center1 = np.random.uniform(-2, 2, 3)
+            center2 = np.random.uniform(-2, 2, 3)
 
         output1 = np.zeros(npoint)
-        center1 = np.random.uniform(-2, 2, 3)
         g.eval_spline(cs, center1, output1, cell)
 
         output2 = np.zeros(npoint)
-        center2 = np.random.uniform(-2, 2, 3)
         g.eval_spline(cs, center2, output2, cell)
 
         output3 = np.zeros(npoint)
@@ -379,3 +381,21 @@ def test_density_decomposition_n2():
             assert last_error > error
         last_error = error
     assert error < 1e-3
+
+    # test sensibility of results at the positions of the nuclei. Here, the potentials
+    # should be finite and non-zero.
+    nucgrid = IntGrid(mol.coordinates, np.ones(mol.natom))
+    # Contribution from s should be non-zero:
+    tmp_s = np.zeros(nucgrid.size)
+    nucgrid.eval_spline(splines[0], mol.coordinates[0], tmp_s)
+    assert tmp_s[0] != 0.0
+    np.testing.assert_almost_equal(tmp_s[0], splines[0](np.array([0.0]))[0])
+    assert np.isfinite(tmp_s).all()
+    # Contribution from p and higher should be zero.
+    # This tested by computing all and comparing to contribution from s
+    # (with proper scale factor).
+    for lmax in xrange(0, lmaxmax+1):
+        tmp = np.zeros(nucgrid.size)
+        nucgrid.eval_decomposition(splines[:(lmax+1)**2], mol.coordinates[0], tmp)
+        np.testing.assert_almost_equal(tmp[0], tmp_s[0]/np.sqrt(4*np.pi))
+        assert np.isfinite(tmp).all()

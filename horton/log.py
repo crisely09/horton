@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
+# --
 '''Screen logging, timing and citation management
 
    The goal of the screen logger is to track the progress of a computation in
@@ -31,6 +31,7 @@
 import sys, os, datetime, getpass, time, atexit, traceback, resource, urllib
 from contextlib import contextmanager
 from functools import wraps
+from horton.context import context
 import horton
 
 
@@ -81,11 +82,14 @@ class ScreenLog(object):
 
     def with_level(self, level):
         def decorator(fn):
+            @wraps(fn)
             def wrapper(*args, **kwargs):
                 old_level = self._level
                 self.set_level(level)
-                result = fn(*args, **kwargs)
-                self.set_level(old_level)
+                try:
+                    result = fn(*args, **kwargs)
+                finally:
+                    self.set_level(old_level)
                 return result
             return wrapper
         return decorator
@@ -165,7 +169,7 @@ class ScreenLog(object):
 
     def cite(self, key, reason):
         if self._biblio is None:
-            filename = horton.context.get_fn('references.bib')
+            filename = context.get_fn('references.bib')
             self._biblio = Biblio(filename)
         self._biblio.cite(key, reason)
 
@@ -541,15 +545,15 @@ head_banner = """\
 \/ || \/
  |_''_|  HORTON is written and maintained by by Toon Verstraelen (1).
 
-         This version contains contributions from Toon Verstraelen (1),
-         Katharina Boguslawski (2), Pawel Tecmer (2), Farnaz Heidar-Zadeh (2),
-         Matthew Chan (2), Taewon D. Kim (2), Yilin Zhao (2), Steven
-         Vandenbrande (1), Derrick Yang (2), Cristina E. González-Espinoza (2),
-         Peter A. Limacher (2), Diego Berrocal (2), Ali Malek (2) and Paul W.
-         Ayers (2)
+         This version contains contributions from Toon Verstraelen (1), Pawel Tecmer (2),
+         Farnaz Heidar-Zadeh (2), Katharina Boguslawski (2), Matthew Chan (2), Yilin Zhao
+         (2), Taewon D. Kim (2), Steven Vandenbrande (1), Derrick Yang (2), Cristina E.
+         González-Espinoza (2), Stijn Fias (3), Peter A. Limacher (2), Diego Berrocal (2),
+         Ali Malek (2) and Paul W. Ayers (2)
 
-         (1) Center for Molecular Modeling, Ghent University, Belgium.
-         (2) The Ayers Group at McMaster University, Ontario, Canada.
+         (1) Center for Molecular Modeling (CMM), Ghent University, Ghent, Belgium.
+         (2) The Ayers Group, McMaster University, Hamilton, Ontario, Canada.
+         (3) General Chemistry (ALGC), Free University of Brussels, Brussels, Belgium.
 
          More information about HORTON can be found on this website:
          http://theochem.github.com/horton/

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -18,7 +18,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
+# --
 
 
 import os, sys, platform, ConfigParser, subprocess
@@ -181,6 +181,8 @@ def get_lib_config_pkg(libname):
 
 def all_empty(lib_config):
     '''Test if all lib_config fields are empty'''
+    if len(lib_config) == 0:
+        return True
     return all(len(value)==0 for value in lib_config.itervalues())
 
 
@@ -200,7 +202,8 @@ def detect_machine():
         return ('Linux-%s-%s-%s' % (dist[0], dist[1], platform.machine())).replace(' ', '_')
     elif sys.platform == 'darwin':
         mac_ver = platform.mac_ver()
-        return 'Darwin-%s-%s' % (mac_ver[0], mac_ver[2])
+        mac_os  = mac_ver[0].rpartition('.')
+        return 'Darwin-%s-%s' % (mac_os[0], mac_ver[2])
     else:
         return 'unknown'
 
@@ -236,23 +239,35 @@ def lib_config_magic(prefix, libname, static_config={}):
     # Override with environment variables
     lib_config.update(get_lib_config_env(prefix))
 
-    # If no environment variables were set, attempt to guess the right settings.
+    # If no environment variables were set, attempt to use the static config.
     if all_empty(lib_config):
-        if all_exist(static_config) and not all_empty(static_config):
-            # If the static build is present, use it.
-            lib_config.update(static_config)
+        if all_empty(static_config):
+            print '   No static config available for this library'
+        elif not all_exist(static_config):
+            print_lib_config('Static lib not found in ${QAWORKDIR}', static_config)
         else:
-            try:
-                # Try to get dynamic link info from pkg-config
-                lib_config.update(get_lib_config_pkg(libname))
-            except PkgConfigError:
-                # Try to find a machine-specific config file
-                machine = detect_machine()
-                fn_setup_cfg = 'data/setup_cfgs/setup.%s.cfg' % machine
-                lib_config.update(get_lib_config_setup(prefix, fn_setup_cfg))
-                if all_empty(lib_config):
-                    # Uber-dumb fall back
-                    lib_config['libraries'] = [libname]
+            # If the static build is present, use it.
+            print_lib_config('Static lib config in ${QAWORKDIR}', static_config)
+            lib_config.update(static_config)
+
+    # If also the static config did not work, try pkg-config
+    if all_empty(lib_config):
+        try:
+            # Try to get dynamic link info from pkg-config
+            lib_config.update(get_lib_config_pkg(libname))
+        except PkgConfigError:
+            print '   pkg-config failed.'
+
+    # If also pkg-config failed, try machine-specific setup.cfg
+    if all_empty(lib_config):
+        machine = detect_machine()
+        fn_setup_cfg = 'data/setup_cfgs/setup.%s.cfg' % machine
+        lib_config.update(get_lib_config_setup(prefix, fn_setup_cfg))
+
+    # Uber-dumb fallback. It works sometimes.
+    if all_empty(lib_config):
+        lib_config['libraries'] = [libname]
+        print_lib_config('Last resort fallback plan', lib_config)
 
     print_lib_config('Final', lib_config)
     return lib_config
@@ -264,14 +279,30 @@ def lib_config_magic(prefix, libname, static_config={}):
 print 'MACHINE=%s' % detect_machine()
 
 
+# Load dependency information
+# ---------------------------
+import json
+with open('dependencies.json') as f:
+    dependencies = json.load(f)
+# Order does not matter here. Just make it easy to look things up
+dependencies = dict((d['name'], d) for d in dependencies)
+
+
+# Locate ${QAWORKDIR}
+# -------------------
+qaworkdir = os.getenv('QAWORKDIR')
+if qaworkdir is None:
+    qaworkdir = 'qaworkdir'
+
+
 # Configuration of LibXC
 # ----------------------
 
 # Static build info in the depends directory to check for:
-libxc_dir = 'depends/libxc-2.2.2'
+libxc_dir = '%s/cached/libxc-%s' % (qaworkdir, str(dependencies['libxc']['version_ci']))
 libxc_static_config = {
-    'extra_objects': ['%s/src/.libs/libxc.a' % libxc_dir],
-    'include_dirs': ['%s/src' % libxc_dir, libxc_dir],
+    'extra_objects': ['%s/lib/libxc.a' % libxc_dir],
+    'include_dirs': ['%s/include' % libxc_dir],
 }
 # Detect the configuration for LibXC
 libxc_config = lib_config_magic('libxc', 'xc', libxc_static_config)
@@ -280,10 +311,10 @@ libxc_config = lib_config_magic('libxc', 'xc', libxc_static_config)
 # Configuration of LibInt2
 # ------------------------
 
-libint2_dir = 'depends/libint-2.0.3-stable'
+libint2_dir = '%s/cached/libint-%s' % (qaworkdir, str(dependencies['libint']['version_ci']))
 libint2_static_config = {
-    'extra_objects': ['%s/lib/.libs/libint2.a' % libint2_dir],
-    'include_dirs': ['%s/include' % libint2_dir],
+    'extra_objects': ['%s/lib/libint2.a' % libint2_dir],
+    'include_dirs': ['%s/include/libint2' % libint2_dir],
 }
 libint2_config = lib_config_magic('libint2', 'int2', libint2_static_config)
 
@@ -314,7 +345,7 @@ print 'BLAS precompiler directive: -D%s' % blas_precompiler[0]
 
 setup(
     name='horton',
-    version='2.0.0',
+    version='2.0.1',
     description='HORTON: Helpful Open-source Research TOol for N-fermion systems.',
     author='Toon Verstraelen',
     author_email='Toon.Verstraelen@UGent.be',
@@ -341,7 +372,7 @@ setup(
         'install_headers': my_install_headers,
     },
     data_files=[
-        ('share/horton/', glob('data/*.*')),
+        ('share/horton', glob('data/*.*')),
         ('share/horton/test', glob('data/test/*.*')),
         ('share/horton/basis', glob('data/basis/*.*')),
         ('share/horton/grids', glob('data/grids/*.txt')),
@@ -349,6 +380,12 @@ setup(
     ] + [
         ('share/horton/examples/%s' % os.path.basename(dn[:-1]), glob('%s/*.py' % dn) + glob('%s/README' % dn))
         for dn in glob('data/examples/*/')
+    ] + [
+        ('include/horton', glob('horton/*.h')),
+        ('include/horton/grid', glob('horton/grid/*.h')),
+        ('include/horton/gbasis', glob('horton/gbasis/*.h')),
+        ('include/horton/espfit', glob('horton/espfit/*.h')),
+        ('include/horton/matrix', glob('horton/matrix/*.h')),
     ],
     package_data={
         'horton': ['*.pxd'],
@@ -361,11 +398,15 @@ setup(
             sources=get_sources('horton'),
             depends=get_depends('horton'),
             include_dirs=[np.get_include(), '.'],
+            extra_compile_args=['-std=c++11'],
+            cython_directives={"embedsignature": True},
             language="c++"),
         Extension("horton.matrix.cext",
             sources=get_sources('horton/matrix'),
             depends=get_depends('horton/matrix'),
             include_dirs=[np.get_include(), '.'],
+            extra_compile_args=['-std=c++11'],
+            cython_directives={"embedsignature": True},
             language="c++"),
         Extension("horton.gbasis.cext",
             sources=get_sources('horton/gbasis') + ['horton/moments.cpp'],
@@ -379,10 +420,12 @@ setup(
             extra_objects=libint2_config['extra_objects'] +
                           blas_config['extra_objects'],
             extra_compile_args=libint2_config['extra_compile_args'] +
-                                blas_config['extra_compile_args'],
+                                blas_config['extra_compile_args'] +
+                                ['-std=c++11'],
             extra_link_args=libint2_config['extra_link_args'] +
                              blas_config['extra_link_args'],
             define_macros=[blas_precompiler],
+            cython_directives={"embedsignature": True},
             language="c++"),
         Extension("horton.grid.cext",
             sources=get_sources('horton/grid') + [
@@ -392,8 +435,7 @@ setup(
                 'horton/cell.pxd', 'horton/cell.h',
                 'horton/moments.pxd', 'horton/moments.h'],
             include_dirs=[np.get_include(), '.'],
-            #extra_compile_args=["-fopenmp"],
-            #extra_link_args=["-fopenmp"],
+            extra_compile_args=['-std=c++11'],
             language="c++",),
         Extension("horton.meanfield.cext",
             sources=get_sources('horton/meanfield'),
@@ -402,8 +444,9 @@ setup(
             library_dirs=libxc_config['library_dirs'],
             libraries=libxc_config['libraries'],
             extra_objects=libxc_config['extra_objects'],
-            extra_compile_args=libxc_config['extra_compile_args'],
+            extra_compile_args=libxc_config['extra_compile_args'] + ['-std=c++11'],
             extra_link_args=libxc_config['extra_link_args'],
+            cython_directives={"embedsignature": True},
             language="c++"),
         Extension("horton.espfit.cext",
             sources=get_sources('horton/espfit') + [
@@ -413,6 +456,8 @@ setup(
                 'horton/cell.pxd', 'horton/cell.h',
                 'horton/grid/uniform.pxd', 'horton/grid/uniform.h'],
             include_dirs=[np.get_include(), '.'],
+            extra_compile_args=['-std=c++11'],
+            cython_directives={"embedsignature": True},
             language="c++"),
     ],
     headers=get_headers(),

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
+# --
 '''Molecular integration grids'''
 
 
@@ -117,7 +117,9 @@ class BeckeMolGrid(IntGrid):
 
         if mode != 'only':
             # More recent covalent radii are used than in the original work of Becke.
-            cov_radii = np.array([periodic[n].cov_radius for n in self.numbers])
+            # No covalent radius is defined for elements heavier than Curium and a
+            # default value of 3.0 Bohr is used for heavier elements.
+            cov_radii = np.array([(periodic[n].cov_radius or 3.0) for n in self.numbers])
 
         # The actual work:
         if log.do_medium:

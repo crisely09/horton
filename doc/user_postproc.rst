@@ -1,6 +1,6 @@
 ..
     : HORTON: Helpful Open-source Research TOol for N-fermion systems.
-    : Copyright (C) 2011-2015 The HORTON Development Team
+    : Copyright (C) 2011-2016 The HORTON Development Team
     :
     : This file is part of HORTON.
     :
@@ -27,5 +27,3 @@ Post-processing
 
    user_postproc_aim
    user_postproc_espfit
-   user_postproc_localization
-   user_postproc_orbital_entanglement

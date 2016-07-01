@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -17,13 +17,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
-#pylint: skip-file
+# --
 
 
 import os, h5py as h5
 
-from horton import *
+from horton import *  # pylint: disable=wildcard-import,unused-wildcard-import
 from horton.test.common import check_script, tmpdir
 from horton.part.test.common import get_proatomdb_hf_sto3g
 from horton.scripts.test.common import copy_files, check_files
@@ -34,9 +33,8 @@ def test_wpart_schemes():
     assert 'b' in wpart_schemes
     assert 'h' in wpart_schemes
     assert 'hi' in wpart_schemes
-    assert 'he' in wpart_schemes
     assert wpart_schemes['hi'] is HirshfeldIWPart
-    assert wpart_schemes['hi'].options == ['lmax', 'threshold', 'maxiter', 'greedy']
+    assert wpart_schemes['hi'].options == ['lmax', 'threshold', 'maxiter']
     assert not wpart_schemes['hi'].linear
     assert wpart_schemes['h'].linear
     assert wpart_schemes['b'].linear
@@ -102,14 +100,6 @@ def test_script_water_sto3g_hi_noderiv():
     check_script_water_sto3g('hi', do_deriv=False)
 
 
-def test_script_water_sto3g_he():
-    check_script_water_sto3g('he')
-
-
-def test_script_water_sto3g_he_noderiv():
-    check_script_water_sto3g('he', do_deriv=False)
-
-
 def check_script_ch3_rohf_sto3g(scheme, do_deriv=True):
     with tmpdir('horton.scripts.test.test_wpart.test_script_ch3_rohf_sto3g_%s' % scheme) as dn:
         fn_fchk = 'ch3_rohf_sto3g_g03.fchk'
@@ -145,11 +135,3 @@ def test_script_ch3_rohf_sto3g_hi():
 
 def test_script_ch3_rohf_sto3g_hi_noderiv():
     check_script_ch3_rohf_sto3g('hi', do_deriv=False)
-
-
-def test_script_ch3_rohf_sto3g_he():
-    check_script_ch3_rohf_sto3g('he')
-
-
-def test_script_ch3_rohf_sto3g_he_noderiv():
-    check_script_ch3_rohf_sto3g('he', do_deriv=False)

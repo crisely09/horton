@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -18,28 +18,40 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
+# --
 '''Tool to remove whitespace and tab cruft from source code.'''
 
 import sys
 
 
 def clean_code(fn):
-    print 'Cleaning', fn
+    '''Return the clean version of a file in which trailing whitespaces on each line are removed,
+       tabs are replced by four spcaes, and empty lines at the end of the file are discarded.
+
+       *** Arguments ***
+
+       fn
+           The file to be cleaned.
+    '''
+    print 'Cleaning'.upper(), fn
 
     # read lines
     with open(fn) as f:
         lines = f.readlines()
 
-    # this will be set to true if something really changes. if not, the file
+    # a flag to be set to true if something really changes. if not, the file
     # is not rewritten.
     changed = False
 
     # line-by-line stripping of rubish
     for i in xrange(len(lines)):
+        # replace tab with four spaces
         line = lines[i].replace('\t', '    ')
+        # remove trailing whitespaces from the end of the line
         line = line.rstrip() + '\n'
+        # check whether the line has changed
         changed |= (line != lines[i])
+        # re-store the line
         lines[i] = line
 
     # remove empty lines from end of file
@@ -48,7 +60,7 @@ def clean_code(fn):
         lines.pop(-1)
 
     if changed:
-        # write lines
+        # re-write lines because the cleaned file is different
         with open(fn, 'w') as f:
             f.writelines(lines)
 

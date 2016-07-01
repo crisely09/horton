@@ -1,6 +1,6 @@
 ..
     : HORTON: Helpful Open-source Research TOol for N-fermion systems.
-    : Copyright (C) 2011-2015 The HORTON Development Team
+    : Copyright (C) 2011-2016 The HORTON Development Team
     :
     : This file is part of HORTON.
     :
@@ -26,5 +26,3 @@ Electronic Structure Methods
    :maxdepth: 3
 
    user_estruct_hf_dft
-   user_estruct_ap1rog
-   user_estruct_perturbation

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -17,8 +17,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
+# --
 
+
+from libc.stdint cimport int64_t
 
 cimport rtransform
 
@@ -47,3 +49,9 @@ cdef extern from "horton/grid/cubic_spline.h":
     cdef cppclass PowerExtrapolation:
         PowerExtrapolation(double power)
         double get_power()
+
+    cdef cppclass PotentialExtrapolation:
+        PotentialExtrapolation(int64_t l) except +
+        int64_t get_l()
+        double get_amp_left()
+        double get_amp_right()

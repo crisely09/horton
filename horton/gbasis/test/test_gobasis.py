@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -17,14 +17,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
-#pylint: skip-file
+# --
 
 
 import numpy as np, os
 from nose.tools import assert_raises
+from nose.plugins.attrib import attr
 
-from horton import *
+from horton import *  # pylint: disable=wildcard-import,unused-wildcard-import
+
 from horton.test.common import compare_operators
 
 
@@ -267,6 +268,7 @@ def test_grid_lih_321g_hf_esp_some_points():
     check_grid_esp('test/li_h_3-21G_hf_g09.fchk', ref, 1e-8)
 
 
+@attr('slow')
 def test_grid_co_ccpv5z_cart_hf_esp_some_points():
     ref = np.array([ # from cubegen
         [ 0.0,  0.0,  0.0,  10.69443507172],
@@ -282,6 +284,7 @@ def test_grid_co_ccpv5z_cart_hf_esp_some_points():
     check_grid_esp('test/co_ccpv5z_cart_hf_g03.fchk', ref, 1e-3) # cubegen output somehow not reliable?
 
 
+@attr('slow')
 def test_grid_co_ccpv5z_pure_hf_esp_some_points():
     ref = np.array([ # from cubegen
         [ 0.0,  0.0,  0.0,  10.69443507172],
@@ -562,3 +565,33 @@ def test_basis_atoms():
         icenter += 1
         ibasis_all.extend(ibasis_list)
     assert ibasis_all == range(mol.obasis.nbasis)
+
+
+def check_normalization(number, basis):
+    """Helper function to test the normalization of contracted basis sets.
+
+    Parameters
+    ----------
+    number : int
+             Element to test. (Keep in mind that not all elements are supported in most
+             basis sets.)
+    basis : str
+            The basis set, e.g. cc-pvdz.
+    """
+    # Run test on a Helium atom
+    mol = IOData(coordinates=np.array([[0.0, 0.0, 0.0]]), numbers=np.array([number]))
+
+    # Create a Gaussian basis set
+    obasis = get_gobasis(mol.coordinates, mol.numbers, basis)
+
+    # Create a linalg factory
+    lf = DenseLinalgFactory(obasis.nbasis)
+
+    # Compute Gaussian integrals
+    olp = obasis.compute_overlap(lf)
+    np.testing.assert_almost_equal(np.diag(olp._array), 1.0)
+
+
+def test_normalization_ccpvdz():
+    for number in xrange(1, 18+1):
+        check_normalization(number, 'cc-pvdz')

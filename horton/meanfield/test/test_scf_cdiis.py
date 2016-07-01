@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -17,15 +17,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
-#pylint: skip-file
+# --
 
 
 import numpy as np
-from horton import *
+
+from nose.tools import assert_raises
+
+from horton import *  # pylint: disable=wildcard-import,unused-wildcard-import
 from horton.meanfield.test.common import check_hf_cs_hf, check_lih_os_hf, \
     check_water_cs_hfs, check_n2_cs_hfs, check_h3_os_hfs, check_h3_os_pbe, \
-    check_co_cs_pbe
+    check_co_cs_pbe, check_vanadium_sc_hf
 
 
 def test_hf_cs_hf():
@@ -54,3 +56,8 @@ def test_co_cs_pbe():
 
 def test_h3_os_pbe():
     check_h3_os_pbe(CDIISSCFSolver(threshold=1e-6))
+
+
+def test_vanadium_sc_hf():
+    with assert_raises(NoSCFConvergence):
+        check_vanadium_sc_hf(CDIISSCFSolver(threshold=1e-10, maxiter=10))

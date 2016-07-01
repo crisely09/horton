@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -17,14 +17,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
-#pylint: skip-file
+# --
 
 
 import h5py as h5, argparse, numpy as np, os
 from nose.tools import assert_raises
 
-from horton import *
+from horton import *  # pylint: disable=wildcard-import,unused-wildcard-import
 from horton.scripts.common import *
 from horton.test.common import tmpdir
 

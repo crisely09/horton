@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
+# --
 
 
 cimport horton.cell
@@ -25,9 +25,6 @@ cimport cubic_spline
 cimport uniform
 
 cdef extern from "horton/grid/evaluate.h":
-    void eval_spline_cube(cubic_spline.CubicSpline* spline, double* center,
-        double* output, uniform.UniformGrid* ugrid)
-
     void eval_spline_grid(cubic_spline.CubicSpline* spline, double* center,
         double* output, double* points, horton.cell.Cell* cell,
         long npoint)

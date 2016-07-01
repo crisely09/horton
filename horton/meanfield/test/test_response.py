@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -17,13 +17,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
-#pylint: skip-file
+# --
 
 
 import numpy as np
 
-from horton import *
+from horton import *  # pylint: disable=wildcard-import,unused-wildcard-import
 
 
 def check_response(fn):
@@ -33,7 +32,7 @@ def check_response(fn):
     if hasattr(mol, 'exp_beta'):
         exps.append(mol.exp_beta)
     for exp in exps:
-        response = compute_noninteracting_response(mol.exp_alpha, operators)
+        response = compute_noninteracting_response(exp, operators)
         assert np.isfinite(response).all()
         assert abs(response.sum(axis=0)).max() < 1e-3
         evals = np.linalg.eigvalsh(response)

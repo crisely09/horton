@@ -1,6 +1,6 @@
 ..
     : HORTON: Helpful Open-source Research TOol for N-fermion systems.
-    : Copyright (C) 2011-2015 The HORTON Development Team
+    : Copyright (C) 2011-2016 The HORTON Development Team
     :
     : This file is part of HORTON.
     :
@@ -122,7 +122,7 @@ with the different `backend` modules available. For example, instead of the
 
     lf = CholeskyLinalgFactory()
 
-Making this change will not change any of the preceeding code, provided that the
+Making this change will not change any of the preceding code, provided that the
 same methods and attributes are implemented in this module as well.
 
 Many functions and classes have been implemented into the ``matrix`` package. It

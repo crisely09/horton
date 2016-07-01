@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -17,15 +17,20 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
-#pylint: skip-file
+# --
 
 
-import numpy as np, tempfile, shutil
 from contextlib import contextmanager
-import subprocess, os, shlex
+import numpy as np
+import os
+import shutil
+import subprocess
+import tempfile
 
-from horton import *
+from horton.cext import Cell
+from horton.moments import get_cartesian_powers
+from horton.matrix.dense import DenseTwoIndex, DenseFourIndex
+from horton.meanfield.occ import AufbauOccModel
 
 
 __all__ = [
@@ -35,7 +40,7 @@ __all__ = [
     'compare_expansions', 'compare_all_expansions', 'compare_dms',
     'compare_all_dms', 'compare_operators', 'compare_occ_model', 'compare_exps',
     'compare_mols', 'compare_symmetries',
-    'tmpdir',
+    'tmpdir', 'numpy_seed', 'truncated_file',
 ]
 
 
@@ -358,3 +363,45 @@ def tmpdir(name):
         yield dn
     finally:
         shutil.rmtree(dn)
+
+
+@contextmanager
+def numpy_seed(seed=1):
+    """Temporarily set NumPy's random seed to a given number.
+
+    Parameters
+    ----------
+    seed : int
+           The seed for NumPy's random number generator.
+    """
+    state = np.random.get_state()
+    np.random.seed(seed)
+    yield None
+    np.random.set_state(state)
+
+
+@contextmanager
+def truncated_file(name, fn_orig, nline, nadd):
+    """Make a temporary truncated copy of a file.
+
+    Parameters
+    ----------
+    name : str
+           The name of test, used to make a unique temporary directory
+    fn_orig : str
+              The file to be truncated.
+    nline : int
+            The number of lines to retain.
+    nadd : int
+           The number of empty lines to add.
+    """
+    with tmpdir(name) as dn:
+        fn_truncated = '%s/truncated_%i_%s' % (dn, nline, os.path.basename(fn_orig))
+        with open(fn_orig) as f_orig, open(fn_truncated, 'w') as f_truncated:
+            for counter, line in enumerate(f_orig):
+                if counter >= nline:
+                    break
+                f_truncated.write(line)
+            for _ in xrange(nadd):
+                f_truncated.write('\n')
+        yield fn_truncated

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -17,14 +17,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
-#pylint: skip-file
+# --
 
 
 import numpy as np
+
 from nose.tools import assert_raises
-from horton import *
-from horton.meanfield.test.common import check_hf_cs_hf, check_lih_os_hf
+
+from horton import *  # pylint: disable=wildcard-import,unused-wildcard-import
+from horton.meanfield.test.common import check_hf_cs_hf, check_lih_os_hf, \
+    check_vanadium_sc_hf
 
 
 def test_hf_cs_hf():
@@ -33,6 +35,24 @@ def test_hf_cs_hf():
 
 def test_lih_os_hf():
     check_lih_os_hf(PlainSCFSolver(threshold=1e-10))
+
+
+def test_vanadium_sc_hf():
+    with assert_raises(NoSCFConvergence):
+        check_vanadium_sc_hf(PlainSCFSolver(threshold=1e-10, maxiter=10))
+
+
+def test_hf_cs_hf_level_shift():
+    check_hf_cs_hf(PlainSCFSolver(threshold=1e-10, level_shift=0.01))
+
+
+def test_lih_os_hf_level_shift():
+    check_lih_os_hf(PlainSCFSolver(threshold=1e-10, level_shift=0.02))
+
+
+def test_vanadium_sc_hf_level_shift():
+    with assert_raises(ValueError):
+        check_vanadium_sc_hf(PlainSCFSolver(threshold=1e-10, level_shift=-0.1))
 
 
 def test_hf_water_321g_mistake():

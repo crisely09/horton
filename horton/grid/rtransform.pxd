@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
+# --
 
 
 cdef extern from "horton/grid/rtransform.h":
@@ -57,19 +57,16 @@ cdef extern from "horton/grid/rtransform.h":
         double get_alpha()
 
 
-    cdef cppclass ShiftedExpRTransform:
-        ShiftedExpRTransform(double rmin, double rshift, double rmax, int npoint) except +
-
-        double get_rmin()
-        double get_rshift()
-        double get_rmax()
-        double get_r0()
-        double get_alpha()
-
-
     cdef cppclass PowerRTransform:
         PowerRTransform(double rmin, double rmax, int npoint) except +
 
         double get_rmin()
         double get_rmax()
         double get_power()
+
+
+    cdef cppclass HyperbolicRTransform:
+        HyperbolicRTransform(double a, double b, int npoint) except +
+
+        double get_a()
+        double get_b()

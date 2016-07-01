@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -17,14 +17,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
-#pylint: skip-file
+# --
 
 
 import numpy as np
 from nose.tools import assert_raises
+from nose.plugins.attrib import attr
 
-from horton import *
+from horton import *  # pylint: disable=wildcard-import,unused-wildcard-import
 from horton.quadprog import FeasibilityError, BoundedError, ConvergenceError, \
     _counter_to_free, find_1d_root, solve_safe, diagonal_form, \
     solve_constrained, solve_radius
@@ -366,6 +366,7 @@ def test_brute_simple():
     qps.check_solution(x)
 
 
+@attr('slow')
 def test_brute_local_posdef():
     for counter in xrange(100):
         # A large eps is used because some random problems are very ill-behaved.
@@ -407,6 +408,7 @@ def test_brute_local_posdef():
                 raise
 
 
+@attr('slow')
 def test_brute_local():
     for counter in xrange(100):
         # A large eps is used because some random problems are very ill-behaved.

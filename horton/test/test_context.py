@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -17,17 +17,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
-#pylint: skip-file
+# --
 
 
 import os, subprocess, importlib
 from glob import glob
 from nose.tools import assert_raises
-from horton.test.common import in_horton_source_root
 
 from horton import context
 
+from horton.test.common import in_horton_source_root
 
 def test_context():
     fn = context.get_fn('basis/sto-3g.nwchem')

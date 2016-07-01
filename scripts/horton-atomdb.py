@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -18,15 +18,20 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
+# --
 
 
-import sys, argparse, numpy as np
+import sys
+import argparse
+import numpy as np
 from glob import glob
 
-from horton import log, lebedev_laikov_npoints, ProAtomDB, angstrom, periodic, \
-    AtomicGridSpec, ProAtomRecord, __version__, IOData
-from horton.scripts.atomdb import *
+from horton import __version__
+from horton.log import log
+from horton.grid.atgrid import AtomicGridSpec
+from horton.part.proatomdb import ProAtomDB, ProAtomRecord
+from horton.scripts.atomdb import iter_states, plot_atoms, Template, EnergyTable, \
+    atom_programs
 
 
 # All, except underflows, is *not* fine.
@@ -65,8 +70,8 @@ def parse_args_input(args):
     parser.add_argument('template',
         help='A template input file for a single atom in the origin. The '
             'template must contain the fields described below.')
-    parser.add_argument('--max-kation', type=int, default=3,
-        help='The most positive kation to consider. [default=%(default)s]')
+    parser.add_argument('--max-cation', type=int, default=3,
+        help='The most positive cation to consider. [default=%(default)s]')
     parser.add_argument('--max-anion', type=int, default=2,
         help='The most negative anion to consider. [default=%(default)s]')
     parser.add_argument('--no-hund', dest='hund', default=True, action='store_false',
@@ -87,7 +92,7 @@ def main_input(args):
         template = Template(f.read())
 
     # Loop over all atomic states and make input files
-    for number, charge, mult in iter_states(args.elements, args.max_kation, args.max_anion, args.hund):
+    for number, charge, mult in iter_states(args.elements, args.max_cation, args.max_anion, args.hund):
         args.program.write_input(number, charge, mult, template, args.overwrite)
 
     # Write a script that will run all computations (also those created previously)
@@ -112,114 +117,6 @@ def parse_args_convert(args):
              'interpolation in horton-wpart.py')
 
     return parser.parse_args(args)
-
-
-def get_color(index):
-    colors = ["#FF0000", "#FFAA00", "#00AA00", "#00AAFF", "#0000FF", "#FF00FF", "#777777"]
-    return colors[index%len(colors)]
-
-
-def plot_atoms(proatomdb):
-    try:
-        import matplotlib.pyplot as pt
-    except ImportError:
-        if log.do_warning:
-            log.warn('Skipping plots because matplotlib was not found.')
-        return
-
-    lss = {True: '-', False: ':'}
-    for number in proatomdb.get_numbers():
-        r = proatomdb.get_rgrid(number).radii
-        symbol = periodic[number].symbol
-        charges = proatomdb.get_charges(number)
-        suffix = '%03i_%s' % (number, symbol.lower().rjust(2, '_'))
-
-        # The density (rho)
-        pt.clf()
-        for i, charge in enumerate(charges):
-            record = proatomdb.get_record(number, charge)
-            y = record.rho
-            ls = lss[record.safe]
-            color = get_color(i)
-            label = 'q=%+i' % charge
-            pt.semilogy(r/angstrom, y, lw=2, ls=ls, label=label, color=color)
-        pt.xlim(0, 3)
-        pt.ylim(ymin=1e-5)
-        pt.xlabel('Distance from the nucleus [A]')
-        pt.ylabel('Spherically averaged density [Bohr**-3]')
-        pt.title('Proatoms for element %s (%i)' % (symbol, number))
-        pt.legend(loc=0)
-        fn_png  = 'dens_%s.png' % suffix
-        pt.savefig(fn_png)
-        if log.do_medium:
-            log('Written', fn_png)
-
-        # 4*pi*r**2*rho
-        pt.clf()
-        for i, charge in enumerate(charges):
-            record = proatomdb.get_record(number, charge)
-            y = record.rho
-            ls = lss[record.safe]
-            color = get_color(i)
-            label = 'q=%+i' % charge
-            pt.plot(r/angstrom, 4*np.pi*r**2*y, lw=2, ls=ls, label=label, color=color)
-        pt.xlim(0, 3)
-        pt.ylim(ymin=0.0)
-        pt.xlabel('Distance from the nucleus [A]')
-        pt.ylabel('4*pi*r**2*density [Bohr**-1]')
-        pt.title('Proatoms for element %s (%i)' % (symbol, number))
-        pt.legend(loc=0)
-        fn_png  = 'rdens_%s.png' % suffix
-        pt.savefig(fn_png)
-        if log.do_medium:
-            log('Written', fn_png)
-
-        fukui_data = []
-        if number - charges[0] == 1:
-            record0 = proatomdb.get_record(number, charges[0])
-            fukui_data.append((record0.rho, record0.safe, '%+i' % charges[0]))
-        for i, charge in enumerate(charges[1:]):
-            record0 = proatomdb.get_record(number, charge)
-            record1 = proatomdb.get_record(number, charges[i])
-            fukui_data.append((
-                record0.rho - record1.rho,
-                record0.safe and record1.safe,
-                '%+i-%+i' % (charge, charges[i])
-            ))
-
-        # The Fukui functions
-        pt.clf()
-        for i, (f, safe, label) in enumerate(fukui_data):
-            ls = lss[safe]
-            color = get_color(i)
-            pt.semilogy(r/angstrom, f, lw=2, ls=ls, label=label, color=color, alpha=1.0)
-            pt.semilogy(r/angstrom, -f, lw=2, ls=ls, color=color, alpha=0.2)
-        pt.xlim(0, 3)
-        pt.ylim(ymin=1e-5)
-        pt.xlabel('Distance from the nucleus [A]')
-        pt.ylabel('Fukui function [Bohr**-3]')
-        pt.title('Proatoms for element %s (%i)' % (symbol, number))
-        pt.legend(loc=0)
-        fn_png  = 'fukui_%s.png' % suffix
-        pt.savefig(fn_png)
-        if log.do_medium:
-            log('Written', fn_png)
-
-        # 4*pi*r**2*Fukui
-        pt.clf()
-        for i, (f, safe, label) in enumerate(fukui_data):
-            ls = lss[safe]
-            color = get_color(i)
-            pt.plot(r/angstrom, 4*np.pi*r**2*f, lw=2, ls=ls, label=label, color=color)
-        pt.xlim(0, 3)
-        pt.xlabel('Distance from the nucleus [A]')
-        pt.ylabel('4*pi*r**2*Fukui [Bohr**-1]')
-        pt.title('Proatoms for element %s (%i)' % (symbol, number))
-        pt.legend(loc=0)
-        fn_png  = 'rfukui_%s.png' % suffix
-        pt.savefig(fn_png)
-        if log.do_medium:
-            log('Written', fn_png)
 
 
 def main_convert(args):

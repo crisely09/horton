@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -17,14 +17,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
-#pylint: skip-file
+# --
 
 
 import numpy as np
 from nose.tools import assert_raises
+from nose.plugins.attrib import attr
 
-from horton import *
+from horton import *  # pylint: disable=wildcard-import,unused-wildcard-import
 
 
 tfs = {
@@ -167,6 +167,7 @@ def test_cart_pure_domain():
         cart_to_pure_low(work_cart.reshape(-1), work_pure.reshape(-1), shell_type=3, nant=1, npost=0)
 
 
+@attr('slow')
 def test_cart_pure_water_ccpvdz_hf():
     fn_fchk_pure = context.get_fn('test/water_ccpvdz_pure_hf_g03.fchk')
     fn_log_pure = fn_fchk_pure[:-5] + '.log'

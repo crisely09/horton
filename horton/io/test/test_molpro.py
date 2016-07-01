@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -17,12 +17,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
-#pylint: skip-file
+# --
 
 
 import os
-from horton import *
+from nose.plugins.attrib import attr
+
+from horton import *  # pylint: disable=wildcard-import,unused-wildcard-import
+
 from horton.test.common import tmpdir
 
 
@@ -138,6 +140,7 @@ def test_dump_load_fcidimp_consistency_mo_water_sto3g():
     check_dump_load_fcidimp_consistency_mo(context.get_fn('test/h2o_sto3g.fchk'))
 
 
+@attr('slow')
 def test_dump_load_fcidimp_consistency_mo_water_ccpvdz():
     check_dump_load_fcidimp_consistency_mo(context.get_fn('test/water_ccpvdz_pure_hf_g03.fchk'))
 

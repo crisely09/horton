@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -17,36 +17,41 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
-#pylint: skip-file
+# --
 
 
-import numpy as np, h5py as h5
-from horton import *
+import numpy as np
+import h5py as h5
+
+from horton import *  # pylint: disable=wildcard-import,unused-wildcard-import
+
+from horton.test.common import numpy_seed
 
 
 def test_tridiagsym_solve():
     N = 10
     A = np.zeros((N,N), float)
-    # randomize the diagonal
-    A.ravel()[::N+1] = np.random.uniform(1,2,N)
-    # randomize the upper diagonal
-    A.ravel()[1::N+1] = np.random.uniform(-1,0,N-1)
-    # clone the lower diagonal
-    A.ravel()[N::N+1] = A.ravel()[1::N+1]
-    # test the inverse for all possible basis vectors
-    Ainv = np.linalg.inv(A)
-    for i in xrange(N):
-        right = np.zeros(N, float)
-        right[i] = 1.0
-        solution = np.zeros(N, float)
-        tridiagsym_solve(
-            A.ravel()[::N+1].copy(),
-            A.ravel()[N::N+1].copy(),
-            right, solution
-        )
-        error = abs(solution - Ainv[:,i]).max()
-        assert(error < 1e-12)
+    for irep in xrange(100):
+        with numpy_seed(irep):  # Make random numbers reproducible
+            # randomize the diagonal
+            A.ravel()[::N+1] = np.random.uniform(1,2,N)
+            # randomize the upper diagonal
+            A.ravel()[1::N+1] = np.random.uniform(-1,0,N-1)
+        # clone the lower diagonal
+        A.ravel()[N::N+1] = A.ravel()[1::N+1]
+        # test the inverse for all possible basis vectors
+        Ainv = np.linalg.inv(A)
+        for i in xrange(N):
+            right = np.zeros(N, float)
+            right[i] = 1.0
+            solution = np.zeros(N, float)
+            tridiagsym_solve(
+                A.ravel()[::N+1].copy(),
+                A.ravel()[N::N+1].copy(),
+                right, solution
+            )
+            error = abs(solution - Ainv[:,i]).max()
+            assert(error < 1e-9)
 
 
 def test_basics_identity():
@@ -333,6 +338,26 @@ def test_extrapolation_exp_power():
     assert abs(cs.extrapolation.eval_right(newx[0]) - newx[0]**2).max() < 1e-10
     assert abs(cs.deriv(newx) - 2*newx).max() < 1e-10
     assert abs(cs.extrapolation.deriv_right(newx[0]) - 2*newx[0]) < 1e-10
+
+
+def test_extrapolation_exp_potential():
+    rtf = ExpRTransform(0.1, 1.0, 10)
+    x = rtf.get_radii()
+    y = 1/(np.exp(-2*x)+x**2)
+    d = -y**2*(np.exp(-2*x)*(-2) + 2*x)
+    for l in 0, 1, 2, 3:
+        cs = CubicSpline(y, d, rtf, extrapolation=PotentialExtrapolation(l))
+        assert cs.extrapolation.l == l
+        np.testing.assert_allclose(cs.extrapolation.amp_left, y[0]/x[0]**l)
+        np.testing.assert_allclose(cs.extrapolation.amp_right, y[-1]*x[-1]**(l+1))
+        newx = np.array([-2.5, -1.1])
+        amp_left = cs.extrapolation.amp_left
+        np.testing.assert_allclose(cs(newx), amp_left*newx**l)
+        np.testing.assert_allclose(cs.deriv(newx), amp_left*l*newx**(l-1))
+        newx = np.array([10.5, 11.5])
+        amp_right = cs.extrapolation.amp_right
+        np.testing.assert_allclose(cs(newx), amp_right/newx**(l+1))
+        np.testing.assert_allclose(cs.deriv(newx), -(l+1)*amp_right/newx**(l+2))
 
 
 def test_consistency_h5():

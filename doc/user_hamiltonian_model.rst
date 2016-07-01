@@ -1,6 +1,6 @@
 ..
     : HORTON: Helpful Open-source Research TOol for N-fermion systems.
-    : Copyright (C) 2011-2015 The HORTON Development Team
+    : Copyright (C) 2011-2016 The HORTON Development Team
     :
     : This file is part of HORTON.
     :
@@ -96,7 +96,7 @@ The the on-site repulsion :math:`U` is calculated using the method
 
     onsite = modelham.compute_er(lf, U)
 
-Finally, all terms of the 1-dimensinal Hubbard Hamiltonian are combined together
+Finally, all terms of the 1-dimensional Hubbard Hamiltonian are combined together
 and passed to the effective Hamiltonian class, :py:class:`~horton.meanfield.hamiltonian.REffHam`,
 which can then be passed to the restricted Hartree-Fock or DFT modules,
 
@@ -108,9 +108,6 @@ which can then be passed to the restricted Hartree-Fock or DFT modules,
             RExchangeTerm(onsite, 'x_hf'),
             ]
     ham = REffHam(terms)
-
-Note that the last step can be omitted for post-Hartree-Fock methods, like
-:ref:`AP1roG <user_ap1rog>`, :ref:`MP2 <mp2>`, :ref:`PTa <pta>`, and :ref:`PTb <ptb>`.
 
 
 Filling the lattice

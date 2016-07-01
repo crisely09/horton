@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -17,13 +17,18 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
+# --
 '''Code shared by several scripts'''
 
 
 import os, sys, datetime, numpy as np
 
-from horton import UniformGrid, angstrom, periodic, log, dump_h5, LockedH5File
+from horton.units import angstrom
+from horton.grid.cext import UniformGrid
+from horton.periodic import periodic
+from horton.log import log
+from horton.io.lockedh5 import LockedH5File
+from horton.io.internal import dump_h5
 
 
 __all__ = [
@@ -203,7 +208,7 @@ def store_args(args, grp):
 
 
 def write_part_output(fn_h5, grp_name, part, keys, args):
-    '''Write the output of horton-wpart.py or horton-cpart.py
+    '''Write the output of horton-wpart.py
 
        **Arguments:**
 

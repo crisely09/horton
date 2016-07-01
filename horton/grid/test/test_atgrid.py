@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -17,15 +17,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
-#pylint: skip-file
+# --
 
 
 import os, shutil, numpy as np, h5py as h5
 from nose.tools import assert_raises
 
+from horton import *  # pylint: disable=wildcard-import,unused-wildcard-import
+
 from horton.test.common import tmpdir
-from horton import *
 
 
 def test_normalize_nlls():
@@ -101,6 +101,11 @@ def test_agspec_string():
         assert (nlls == [26]*20).all()
 
 
+def test_agspec_wrong_string():
+    with assert_raises(ValueError):
+        AtomicGridSpec('power:0.001:10.0:20')
+
+
 def test_agspec_local_file():
     with tmpdir('horton.scripts.test.test_espfit.test_scripts_symmetry') as dn:
         fn_dest = os.path.join(dn, 'mygrid.txt')
@@ -148,7 +153,6 @@ def test_atomic_grid_basics1():
     center = np.random.uniform(-1,1,3)
     rtf = ExpRTransform(0.1, 1e1, 4)
     rgrid = RadialGrid(rtf, StubIntegrator1D())
-    nlls = 6
     for random_rotate in True, False:
         ag0 = AtomicGrid(1, 1, center, (rgrid, 6), random_rotate)
         assert abs(ag0.points.mean(axis=0) - center).max() < 1e-10
@@ -313,7 +317,7 @@ def test_atgrid_attrs():
 
 
 def test_random_rotation():
-    for i in xrange(10):
+    for _ in xrange(10):
         rotmat = get_random_rotation()
         assert abs(np.dot(rotmat, rotmat.T) - np.identity(3)).max() < 1e-10
         assert abs(np.dot(rotmat.T, rotmat) - np.identity(3)).max() < 1e-10

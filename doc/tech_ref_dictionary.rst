@@ -1,6 +1,6 @@
 ..
     : HORTON: Helpful Open-source Research TOol for N-fermion systems.
-    : Copyright (C) 2011-2015 The HORTON Development Team
+    : Copyright (C) 2011-2016 The HORTON Development Team
     :
     : This file is part of HORTON.
     :
@@ -123,5 +123,5 @@ Variable names and prefixes
     The alpha - beta electron density (typically as an array of electron density
     values evaluated on a grid.)
 
-:index:`wpart` or :index:`cpart`
+:index:`wpart`
     A partitioning scheme.

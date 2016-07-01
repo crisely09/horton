@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -17,18 +17,19 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
-#pylint: skip-file
+# --
 
 
 import os, shutil
+from nose.plugins.attrib import attr
+
 from horton.context import context
 from horton.periodic import periodic
 from horton.part.proatomdb import ProAtomDB
 from horton.test.common import check_script, tmpdir
 from horton.scripts.test.common import copy_files, check_files
 
-from horton.scripts.atomdb import *
+from horton.scripts.atomdb import iter_mults, iter_states, plot_atoms
 
 
 def test_iter_mults():
@@ -136,6 +137,7 @@ def make_fake_run_script(program, dn):
         print >> f, 'echo "Foo"'
 
 
+@attr('slow')
 def test_script_convert_cp2k():
     with tmpdir('horton.scripts.test.test_atomdb.test_script_convert_cp2k') as dn:
         copy_atom_output('atom_op2.cp2k.out', 8, +2, 3, dn, 'atom.cp2k.out')
@@ -156,6 +158,7 @@ def test_script_convert_cp2k():
         assert padb.get_rgrid(8).size == 71
 
 
+@attr('slow')
 def test_script_convert_g09():
     with tmpdir('horton.scripts.test.test_atomdb.test_script_convert_g09') as dn:
         copy_atom_output('atom_014_013_hf_lan.fchk', 14, +1, 2, dn, 'atom.fchk')
@@ -171,6 +174,7 @@ def test_script_convert_g09():
         assert padb.get_rgrid(14).size == 49
 
 
+@attr('slow')
 def test_script_convert_g03():
     with tmpdir('horton.scripts.test.test_atomdb.test_script_convert_g03') as dn:
         copy_atom_output('atom_001_001_hf_sto3g.fchk', 1,  0, 2, dn, 'atom.fchk')
@@ -192,3 +196,14 @@ def test_script_convert_g03():
         assert padb.get_numbers() == [1, 8]
         assert padb.get_charges(1) == [0, -1]
         assert padb.get_charges(8) == [+1, 0, -1]
+
+
+def test_plot_atoms():
+    padb = ProAtomDB.from_refatoms(numbers=[8, 1], max_cation=1, max_anion=1)
+    with tmpdir('horton.scripts.test.test_atomdb.test_plot_atoms') as dn:
+        plot_atoms(padb, dn)
+        fns = [
+            'dens_001__h.png', 'rdens_001__h.png', 'fukui_001__h.png', 'rfukui_001__h.png',
+            'dens_008__o.png', 'rdens_008__o.png', 'fukui_008__o.png', 'rfukui_008__o.png',
+        ]
+        check_files(dn, fns)

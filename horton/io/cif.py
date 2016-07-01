@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
+# --
 '''Crystalographic Information File format'''
 
 
@@ -26,6 +26,8 @@ import shlex, numpy as np
 
 from horton.units import angstrom, deg
 from horton.periodic import periodic
+from horton.cext import Cell
+from horton.symmetry import Symmetry
 
 
 __all__ = ['dump_cif', 'iter_equiv_pos_terms', 'equiv_pos_to_generator', 'load_cif']
@@ -305,7 +307,6 @@ def load_cif(filename, lf):
        **Returns** a dictionary with: ``title``, ``coordinates``, ``numbers``,
        ``symmetry``, ``links``, ``cell``.
     '''
-    from horton import angstrom, deg, periodic, Cell, Symmetry
     title, fields = _load_cif_low(filename)
 
     name = fields.get('symmetry_Int_Tables_number', 'None')

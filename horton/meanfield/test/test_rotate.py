@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -17,14 +17,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
-#pylint: skip-file
+# --
 
 
-from horton import *
 import numpy as np
+from nose.plugins.attrib import attr
+
+from horton import *  # pylint: disable=wildcard-import,unused-wildcard-import
 
 
+@attr('slow')
 def test_rotation_energy():
     mol = IOData.from_file(context.get_fn('test/he_spdf_orbital.fchk'))
     kin = mol.obasis.compute_kinetic(mol.lf)

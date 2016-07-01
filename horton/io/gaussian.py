@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
+# --
 '''Gaussian LOG and FCHK file fromats'''
 
 
@@ -28,7 +28,7 @@ __all__ = ['load_operators_g09', 'FCHKFile', 'load_fchk']
 
 
 def load_operators_g09(fn, lf):
-    """Loads several one- and four-index operators from a Gaussian log file.
+    """Loads several two- and four-index operators from a Gaussian log file.
 
        **Arugment:**
 
@@ -60,7 +60,7 @@ def load_operators_g09(fn, lf):
             raise TypeError('The value of lf.default_nbasis does not match nbasis reported in the log file.')
         lf.default_nbasis = nbasis
 
-        # Then load the one- and four-index operators. This part is written such
+        # Then load the two- and four-index operators. This part is written such
         # that it does not make any assumptions about the order in which these
         # operators are printed.
 
@@ -287,7 +287,7 @@ def load_fchk(filename, lf):
        ``dm_spin_cc``, ``dm_full_ci``, ``dm_spin_ci``, ``dm_full_scf``,
        ``dm_spin_scf``.
     '''
-    from horton.gbasis import GOBasis
+    from horton.gbasis.cext import GOBasis
 
     fchk = FCHKFile(filename, [
         "Number of electrons", "Number of independant functions",

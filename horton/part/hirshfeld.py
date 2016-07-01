@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -17,16 +17,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
+# --
 '''Hirshfeld partitioning'''
 
 
 from horton.cache import just_once
 from horton.log import log
-from horton.part.stockholder import StockholderWPart, StockholderCPart
+from horton.part.stockholder import StockholderWPart
 
 
-__all__ = ['HirshfeldWPart', 'HirshfeldCPart']
+__all__ = ['HirshfeldWPart']
 
 
 def check_proatomdb(numbers, pseudo_numbers, proatomdb):
@@ -97,18 +97,16 @@ class HirshfeldMixin(object):
         c6s, new_c6s = self._cache.load('c6s', alloc=self.natom, tags='o')
 
         if new_volumes or new_volume_ratios or new_c6s:
-            self.do_populations()
             self.do_moments()
             radial_moments = self._cache.load('radial_moments')
-            populations = self._cache.load('populations')
 
             if log.do_medium:
                 log('Computing atomic dispersion coefficients.')
 
             for i in xrange(self.natom):
                 n = self.numbers[i]
-                volumes[i] = radial_moments[i,2]/populations[i]
-                ref_volume = self.proatomdb.get_record(n, 0).get_moment(3)/n
+                volumes[i] = radial_moments[i, 3]
+                ref_volume = self.proatomdb.get_record(n, 0).get_moment(3)
                 volume_ratios[i] = volumes[i]/ref_volume
                 if n in ref_c6s:
                     c6s[i] = (volume_ratios[i])**2*ref_c6s[n]
@@ -131,34 +129,3 @@ class HirshfeldWPart(HirshfeldMixin, StockholderWPart):
         HirshfeldMixin. __init__(self, numbers, pseudo_numbers, proatomdb)
         StockholderWPart.__init__(self, coordinates, numbers, pseudo_numbers,
                                   grid, moldens, spindens, local, lmax)
-
-
-class HirshfeldCPart(HirshfeldMixin, StockholderCPart):
-    '''Hirshfeld partitioning with uniform grids'''
-
-    def __init__(self, coordinates, numbers, pseudo_numbers, grid, moldens,
-                 proatomdb, spindens=None, local=True, lmax=3,
-                 wcor_numbers=None, wcor_rcut_max=2.0, wcor_rcond=0.1):
-        '''
-           **Arguments:** (that are not defined in ``CPart``)
-
-           proatomdb
-                In instance of ProAtomDB that contains all the reference atomic
-                densities.
-        '''
-        HirshfeldMixin. __init__(self, numbers, pseudo_numbers, proatomdb)
-        StockholderCPart.__init__(self, coordinates, numbers, pseudo_numbers,
-                                  grid, moldens, spindens, local, lmax,
-                                  wcor_numbers, wcor_rcut_max, wcor_rcond)
-
-    def get_cutoff_radius(self, index):
-        '''The radius at which the weight function goes to zero'''
-        rtf = self.get_rgrid(index).rtransform
-        return rtf.radius(rtf.npoint-1)
-
-    def get_wcor_funcs(self, index):
-        number = self.numbers[index]
-        if number in self.wcor_numbers:
-            return [(self.coordinates[index], [self._proatomdb.get_spline(number)])]
-        else:
-            return []

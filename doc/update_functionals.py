@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -18,15 +18,25 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
-#!/usr/bin/env python
+# --
 
-libxc_version = '2.2.2'
+# Load dependency information -> libxc version
+import json
+with open('../dependencies.json') as f:
+    dependencies = json.load(f)
+# Order does not matter here. Just make it easy to look things up
+dependencies = dict((d['name'], d) for d in dependencies)
+libxc_version = dependencies['libxc']['version_ci']
+
+# find the qaworkdir
+import os
+qaworkdir = os.getenv('QAWORKDIR')
+if qaworkdir is None:
+    qaworkdir = '../qaworkdir'
 
 # find all the functional keys by processing funcs_key.c
-
 keys = []
-with open('../depends/libxc-%s/src/funcs_key.c' % libxc_version) as f:
+with open('%s/cached/libxc-%s/funcs_key.c' % (qaworkdir, libxc_version)) as f:
     for line in f:
         if line.startswith('{'):
             words = line.strip()[1:-3].split(',')

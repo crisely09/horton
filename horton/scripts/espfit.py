@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -17,13 +17,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
+# --
 '''Code used by ESP fitting scripts'''
 
 
 import numpy as np
 
-from horton import IOData, angstrom, ESPCost, LockedH5File
+from horton.io.iodata import IOData
+from horton.io.lockedh5 import LockedH5File
+from horton.units import angstrom
+from horton.espfit.cost import ESPCost
 from horton.scripts.common import reduce_data, parse_h5
 from horton.part.proatomdb import ProAtomDB
 
@@ -130,7 +133,7 @@ def load_rho(coordinates, numbers, fn_cube, ref_ugrid, stride, chop):
         # Load the built-in database of proatoms
         natom = len(numbers)
         numbers = np.unique(numbers)
-        proatomdb = ProAtomDB.from_refatoms(numbers, max_kation=0, max_anion=0, agspec='fine')
+        proatomdb = ProAtomDB.from_refatoms(numbers, max_cation=0, max_anion=0, agspec='fine')
         # Construct the pro-density
         rho = np.zeros(ref_ugrid.shape)
         for i in xrange(natom):

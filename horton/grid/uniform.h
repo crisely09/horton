@@ -1,5 +1,5 @@
 // HORTON: Helpful Open-source Research TOol for N-fermion systems.
-// Copyright (C) 2011-2015 The HORTON Development Team
+// Copyright (C) 2011-2016 The HORTON Development Team
 //
 // This file is part of HORTON.
 //
@@ -46,22 +46,6 @@ class UniformGrid {
 };
 
 
-class UniformGridWindow {
-    private:
-        UniformGrid* ugrid;
-    public:
-        long begin[3];
-        long end[3];
-
-        UniformGridWindow(UniformGrid* ugrid, long* _begin, long* _end);
-
-        double* get_pointer(double* array, long* j);
-
-        void extend(double* cell, double* local);
-        void wrap(double* local, double* cell);
-};
-
-
 long index_wrap(long i, long high);
 
 
@@ -77,29 +61,6 @@ class Range3Iterator {
 
         long get_npoint() const { return npoint; };
         void set_point(long ipoint, long* i, long* iwrap);
-};
-
-
-class Block3Iterator {
-    private:
-        const long* begin;
-        const long* end;
-        const long* shape;
-        long block_begin[3];
-        long block_end[3];
-        long block_shape[3];
-        long nblock;
-    public:
-        Block3Iterator(const long* begin, const long* end, const long* shape);
-
-        long get_nblock() const { return nblock; };
-
-        void copy_block_begin(long* output);
-        void copy_block_end(long* output);
-
-        void set_block(long iblock, long* b);
-        void set_cube_ranges(long* b, long* cube_begin, long* cube_end);
-        void translate(long* b, long* jwrap, long* j);
 };
 
 

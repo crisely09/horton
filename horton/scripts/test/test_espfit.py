@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -17,13 +17,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
-#pylint: skip-file
+# --
 
 
 import os, h5py as h5, numpy as np
+from nose.plugins.attrib import attr
 
-from horton import *
+from horton import *  # pylint: disable=wildcard-import,unused-wildcard-import
 from horton.test.common import check_script, tmpdir
 from horton.scripts.test.common import copy_files, check_files, write_random_lta_cube
 from horton.scripts.espfit import *
@@ -45,6 +45,7 @@ def test_wfar():
     assert parse_wfar('4.2:0.3') == (4.2*angstrom, 0.3*angstrom)
 
 
+@attr('slow')
 def test_scripts():
     # Generate some random system with random esp data
     natom = 5
@@ -82,6 +83,7 @@ def test_scripts():
         check_files(dn, ['esp.h5', 'other.h5', 'foo.h5', 'gen.h5'])
 
 
+@attr('slow')
 def test_scripts_symmetry():
     # Write the cube file to the tmpdir and run scripts
     with tmpdir('horton.scripts.test.test_espfit.test_scripts_symmetry') as dn:

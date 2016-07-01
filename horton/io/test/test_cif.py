@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # HORTON: Helpful Open-source Research TOol for N-fermion systems.
-# Copyright (C) 2011-2015 The HORTON Development Team
+# Copyright (C) 2011-2016 The HORTON Development Team
 #
 # This file is part of HORTON.
 #
@@ -17,13 +17,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
-#--
-#pylint: skip-file
+# --
 
 
 import h5py as h5, numpy as np
+from nose.plugins.attrib import attr
 
-from horton import *
+from horton import *  # pylint: disable=wildcard-import,unused-wildcard-import
 from horton.io.cif import _load_cif_low
 
 from horton.test.common import compare_symmetries, tmpdir
@@ -188,6 +188,7 @@ def test_dump_load_consistency():
     assert abs(frac0 - frac1).max() < 1e-6
 
 
+@attr('slow')
 def test_load_cage():
     mol = IOData.from_file(context.get_fn('test/cage.cif'))
     assert (mol.coordinates != 0).all()
