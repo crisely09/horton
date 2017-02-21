@@ -1895,6 +1895,59 @@ cdef class GB2GaussAttractionIntegral(GB2Integral):
             return (<ints.GB2GaussAttractionIntegral*>self._this).get_alpha()
 
 
+cdef class GB2ErfAttractionIntegral(GB2Integral):
+    '''Wrapper for ints.GB2ErfAttractionIntegral, for testing only'''
+    # make an additional reference to these arguments to avoid deallocation
+    cdef np.ndarray _charges
+    cdef np.ndarray _centers
+
+    def __cinit__(self, long max_nbasis,
+                  np.ndarray[double, ndim=1] charges not None,
+                  np.ndarray[double, ndim=2] centers not None, double mu):
+        assert charges.flags['C_CONTIGUOUS']
+        cdef long ncharge = charges.shape[0]
+        assert centers.flags['C_CONTIGUOUS']
+        assert centers.shape[0] == ncharge
+        self._charges = charges
+        self._centers = centers
+        self._this = <ints.GB2Integral*>(new ints.GB2ErfAttractionIntegral(
+            max_nbasis, &charges[0], &centers[0, 0], ncharge, mu
+        ))
+
+    property mu:
+        def __get__(self):
+            return (<ints.GB2ErfAttractionIntegral*>self._this).get_mu()
+
+
+cdef class GB2GaussAttractionIntegral(GB2Integral):
+    '''Wrapper for ints.GB2GaussAttractionIntegral, for testing only'''
+    # make an additional reference to these arguments to avoid deallocation
+    cdef np.ndarray _charges
+    cdef np.ndarray _centers
+
+    def __cinit__(self, long max_nbasis,
+                  np.ndarray[double, ndim=1] charges not None,
+                  np.ndarray[double, ndim=2] centers not None, double c,
+                  double alpha):
+        assert charges.flags['C_CONTIGUOUS']
+        cdef long ncharge = charges.shape[0]
+        assert centers.flags['C_CONTIGUOUS']
+        assert centers.shape[0] == ncharge
+        self._charges = charges
+        self._centers = centers
+        self._this = <ints.GB2Integral*>(new ints.GB2GaussAttractionIntegral(
+            max_nbasis, &charges[0], &centers[0, 0], ncharge, c, alpha
+        ))
+
+    property c:
+        def __get__(self):
+            return (<ints.GB2GaussAttractionIntegral*>self._this).get_c()
+
+    property alpha:
+        def __get__(self):
+            return (<ints.GB2GaussAttractionIntegral*>self._this).get_alpha()
+
+
 ints.libint2_static_init()
 def libint2_static_cleanup():
     ints.libint2_static_cleanup()
