@@ -30,6 +30,7 @@ from horton.utils import doc_inherit
 
 
 __all__ = ['RCustomGridObservable', 'RModifiedExchange', 'UModifiedExchange',
+            'RShortRangeAExchange', 'UShortRangeAExchange',
             'modified_exchange_energy', 'modified_exchange_potential']
 
 
@@ -89,7 +90,7 @@ class MyDiracExchange(GridObservable):
         # This part is for the potential evaluation (the derivative of the energy)
         # also, the 2^1/3 comes from the generalization to Restricted Hamiltonians
         # so you do (2 rho)^1/3 or (2 rho)^4/3
-        self.derived_coeff = -self.coeff * (4.0 / 3.0) * 2 ** (1.0 / 3.0) 
+        self.derived_coeff = -self.coeff * (4.0 / 3.0) * 2 ** (1.0 / 3.0)
         GridObservable.__init__(self, label)
 
     def _update_pot(self, cache, grid, select):
@@ -186,7 +187,7 @@ class ModifiedExchange(GridObservable):
         return ex
 
 class RModifiedExchange(ModifiedExchange):
-    """The Dirac Exchange Functional for restricted wavefunctions."""
+    """The Modified Dirac Exchange Functional for restricted wavefunctions."""
 
     @doc_inherit(GridObservable)
     def compute_energy(self, cache, grid):
@@ -200,7 +201,7 @@ class RModifiedExchange(ModifiedExchange):
 
 
 class UModifiedExchange(ModifiedExchange):
-    """The Dirac Exchange Functional for unrestricted wavefunctions."""
+    """The Modified Exchange Functional for unrestricted wavefunctions."""
 
     @doc_inherit(GridObservable)
     def compute_energy(self, cache, grid):
@@ -215,6 +216,75 @@ class UModifiedExchange(ModifiedExchange):
     def add_pot(self, cache, grid, pots_alpha, pots_beta):
         pots_alpha[:, 0] += self._update_pot(cache, grid, 'alpha')
         pots_beta[:, 0] += self._update_pot(cache, grid, 'beta')
+
+
+class RShortRangeAExchange(ModifiedExchange):
+    """The Dirac Exchange Functional for restricted wavefunctions."""
+
+    def compute_dirac_energy(self, cache, grid, select):
+        pot = self.compute_dirac_potential(cache, grid, select)
+        rho = cache['all_%s' % select][:, 0]
+        ex =  (3.0 / 2.0) * grid.integrate(pot, rho)
+        return ex
+
+
+    def compute_dirac_potential(self, cache, grid, select):
+        coeff = 3.0 / 4.0 * (3.0 / np.pi) ** (1.0 / 3.0)
+        derived_coeff = -coeff * (4.0 / 3.0) * 2 ** (1.0 / 3.0)
+        rho = cache['all_%s' % select][:, 0]
+        pot = np.zeros(grid.size)
+        pot[:] = derived_coeff * (rho) ** (1.0 / 3.0)
+        return pot
+
+    @doc_inherit(GridObservable)
+    def compute_energy(self, cache, grid):
+        ex = self._update_ex(cache, grid, 'alpha')
+        ex_dirac = self.compute_dirac_energy(cache, grid, 'alpha')
+        rho = cache['all_alpha'][:, 0]
+        return ex_dirac - (2.0) * grid.integrate(ex, rho)
+
+    @doc_inherit(GridObservable)
+    def add_pot(self, cache, grid, pots_alpha):
+        dirac_pot = self.compute_dirac_potential(cache, grid, 'alpha')
+        pots_alpha[:, 0] += dirac_pot - self._update_pot(cache, grid, 'alpha')
+
+
+class UShortRangeAExchange(ModifiedExchange):
+    """The Dirac Exchange Functional for unrestricted wavefunctions."""
+
+    def compute_dirac_energy(self, cache, grid, select):
+        pot = self.compute_dirac_potential(cache, grid, select)
+        rho = cache['all_%s' % select][:, 0]
+        ex =  grid.integrate(pot, rho)
+        return ex
+
+
+    def compute_dirac_potential(self, cache, grid, select):
+        coeff = 3.0 / 4.0 * (3.0 / np.pi) ** (1.0 / 3.0)
+        derived_coeff = -coeff * (4.0 / 3.0) * 2 ** (1.0 / 3.0)
+        rho = cache['all_%s' % select][:, 0]
+        pot = np.zeros(grid.size)
+        pot[:] = derived_coeff * (rho) ** (1.0 / 3.0)
+        return pot
+
+    @doc_inherit(GridObservable)
+    def compute_energy(self, cache, grid):
+        ex_alpha = self._update_ex(cache, grid, 'alpha')
+        ex_beta = self._update_ex(cache, grid, 'beta')
+        ex_alpha_dirac = self.compute_dirac_energy(cache, grid, 'alpha')
+        ex_beta_dirac = self.compute_dirac_energy(cache, grid, 'beta')
+        total_dirac = (3.0 / 4.0) * (ex_alpha_dirac + ex_beta_dirac)
+        rho_alpha = cache['all_alpha'][:, 0]
+        rho_beta = cache['all_beta'][:, 0]
+        return total_dirac - (grid.integrate(ex_alpha, rho_alpha) +
+                              grid.integrate(ex_beta, rho_beta))
+
+    @doc_inherit(GridObservable)
+    def add_pot(self, cache, grid, pots_alpha, pots_beta):
+        alpha_dirac_pot = self.compute_dirac_potential(cache, grid, 'alpha')
+        beta_dirac_pot = self.compute_dirac_potential(cache, grid, 'beta')
+        pots_alpha[:, 0] += alpha_dirac_pot - self._update_pot(cache, grid, 'alpha')
+        pots_beta[:, 0] += beta_dirac_pot - self._update_pot(cache, grid, 'beta')
 
 
 def modified_exchange_energy(rho, mu, c, alpha, output):
