@@ -40,3 +40,4 @@ from horton.meanfield.scf_cdiis import *
 from horton.meanfield.scf_ediis import *
 from horton.meanfield.scf_ediis2 import *
 from horton.meanfield.utils import *
+from horton.meanfield.customgrid import *

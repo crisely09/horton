@@ -29,7 +29,8 @@ from horton.grid.poisson import solve_poisson_becke
 from horton.utils import doc_inherit
 
 
-__all__ = ['RCustomGridIbservable', 'RModifiedExchange']
+__all__ = ['RCustomGridObservable', 'RModifiedExchange', 'UModifiedExchange',
+            'modified_exchange_energy', 'modified_exchange_potential']
 
 
 class RCustomGridObservable(GridObservable):
@@ -145,6 +146,7 @@ class ModifiedExchange(GridObservable):
         self.mu = mu
         self.c = c
         self.alpha = alpha
+        self._coeff = 2.0 ** (1.0/3.0)
         GridObservable.__init__(self, label)
 
     def _update_pot(self, cache, grid, select):
@@ -160,24 +162,37 @@ class ModifiedExchange(GridObservable):
             'alpha' or 'beta'
         """
         rho = cache['all_%s' % select][:, 0]
-        var1 = np.power(3.0 * rho * np.pi**2.0, 1.0/3.0)
-        var2 = np.power(v1, 2)
-        rho_inv = 1 / rho
-        e1 = 
         pot, new = cache.load('pot_x_dirac_%s' % select, alloc=grid.size)
         if new:
-            pot[:] = e1 * rho ** (- 1.0 / 3.0) - e2 * rho ** (-1) - e3
+            pot = self._coeff * modified_exchange_potential(rho, self.mu, self.c, self.alpha, pot)
         return pot
 
+    def _update_ex(self, cache, grid, select):
+        """Recompute an Exchange energy per particle if invalid.
+
+        Parameters
+        ----------
+        cache : Cache
+            Storage for the potentials.
+        grid : IntGrid
+            A numerical integration grid.
+        select : str
+            'alpha' or 'beta'
+        """
+        rho = cache['all_%s' % select][:, 0]
+        ex, new = cache.load('ex_x_dirac_%s' % select, alloc=grid.size)
+        if new:
+            ex[:] = self._coeff * modified_exchange_energy(rho, self.mu, self.c, self.alpha, ex)
+        return ex
 
 class RModifiedExchange(ModifiedExchange):
     """The Dirac Exchange Functional for restricted wavefunctions."""
 
     @doc_inherit(GridObservable)
     def compute_energy(self, cache, grid):
-        pot = self._update_pot(cache, grid, 'alpha')
+        ex = self._update_ex(cache, grid, 'alpha')
         rho = cache['all_alpha'][:, 0]
-        return 2*grid.integrate(pot, rho)
+        return (2.0) * grid.integrate(ex, rho)
 
     @doc_inherit(GridObservable)
     def add_pot(self, cache, grid, pots_alpha):
@@ -189,14 +204,76 @@ class UModifiedExchange(ModifiedExchange):
 
     @doc_inherit(GridObservable)
     def compute_energy(self, cache, grid):
-        pot_alpha = self._update_pot(cache, grid, 'alpha')
-        pot_beta = self._update_pot(cache, grid, 'beta')
+        ex_alpha = self._update_ex(cache, grid, 'alpha')
+        ex_beta = self._update_ex(cache, grid, 'beta')
         rho_alpha = cache['all_alpha'][:, 0]
         rho_beta = cache['all_beta'][:, 0]
-        return (grid.integrate(pot_alpha, rho_alpha) +
-                              grid.integrate(pot_beta, rho_beta))
+        return (grid.integrate(ex_alpha, rho_alpha) +
+                              grid.integrate(ex_beta, rho_beta))
 
     @doc_inherit(GridObservable)
     def add_pot(self, cache, grid, pots_alpha, pots_beta):
         pots_alpha[:, 0] += self._update_pot(cache, grid, 'alpha')
         pots_beta[:, 0] += self._update_pot(cache, grid, 'beta')
+
+
+def modified_exchange_energy(rho, mu, c, alpha, output):
+    '''Compute exchange energy per particle of the asymptotic potential
+        V(r) = erf(mu r)/r + c exp(-alpha^2 r^2)
+    '''
+    import math as m
+    from scipy.special import erf as erf
+
+    for i in range(len(rho)):
+        if rho[i] < 1e-15:
+            output[i] = 0.
+        else:
+            rho_inv = 1.0 / rho[i]
+            var1 = np.power(3.0 * rho[i] * m.pi**2.0, 1.0/3.0)
+            var2 = var1 * var1
+            mu_sqr = mu * mu
+            alpha_sqr = alpha * alpha
+            # terms that depend on rho^-1/3
+            ex1 = (alpha * c * 3.0 ** (2.0 / 3.0))/(2.0 * m.pi ** (7.0 / 6.0))
+            ex1 -= (alpha * c * m.exp(-var2 / (alpha_sqr)))/(2.0 * (3.0 ** (1.0 / 3.0)) * m.pi ** (7.0 / 6.0))
+            ex1 += (mu_sqr * 3.0 ** (2.0 / 3.0))/(2 * m.pi ** (5.0 / 3.0))
+            ex1 -= (mu_sqr * m.exp(-var2/(mu_sqr)))/((m.pi ** (5.0 / 3.0)) * 3.0 ** (1.0/3.0))
+            ex1 *= rho[i] ** (-1.0 / 3.0)
+            # terms that depend on rho^-1
+            ex2 = -(alpha * alpha_sqr * c) / (3 * m.pi ** (5.0 / 2.0))
+            ex2 += (alpha * alpha_sqr * c * m.exp(-var2/alpha_sqr))/(3 * m.pi ** (5.0 / 2.0))
+            ex2 -= (mu_sqr * mu_sqr)/ (6.0 * m.pi ** 3.0)
+            ex2 += (m.exp(- var2 / mu_sqr) * mu_sqr * mu_sqr) / (6 * m.pi ** 3.0)
+            ex2 *= rho_inv
+            # terms rho independent
+            #ex1 *= rho[i] ** (-1.0 / 3.0)
+            ex3 = - 0.5 * c * erf(var1/alpha) - (mu * erf(var1/mu)) / (m.pi ** (1.0 / 2.0))
+            output[i] = ex1 + ex2 + ex3
+    return output
+
+def modified_exchange_potential(rho, mu, c, alpha, output):
+    '''Compute exchange potential of the asymptotic potential
+        V(r) = erf(mu r)/r + c exp(-alpha^2 r^2)
+    '''
+    import math as m
+    from scipy.special import erf as erf
+
+    for i in range(len(rho)):
+        if rho[i] < 1e-15:
+            output[i] += 0.
+        else:
+            rho_inv = 1.0 / rho[i]
+            var1 = np.power(3.0 * rho[i] * m.pi**2.0, 1.0/3.0)
+            var2 = var1 * var1
+            mu_sqr = mu * mu
+            alpha_sqr = alpha * alpha
+            # terms that depend on rho^-4/3
+            pot1 = (alpha * c)/(m.pi ** (7.0 / 6.0))
+            pot1 -= (alpha * c *m.exp(-var2 / (alpha_sqr)))/(m.pi ** (7.0 / 6.0))
+            pot1 += (mu_sqr)/(m.pi ** (5.0 / 3.0))
+            pot1 -= (mu_sqr * m.exp(-var2/mu_sqr))/(m.pi ** (5.0 / 3.0))
+            pot1 *= (3 * rho[i]) ** (-1.0/3.0)
+            # terms rho independent
+            pot2 = - 0.5 * c * erf(var1/alpha) - (mu * erf(var1/mu)) / (m.pi ** (1.0 / 2.0))
+            output[i] += pot1 + pot2
+    return output

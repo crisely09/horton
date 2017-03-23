@@ -22,6 +22,7 @@
 
 from horton import *  # pylint: disable=wildcard-import,unused-wildcard-import
 from customgrid import RMyDiracExchange  # pylint: disable=wildcard-import,unused-wildcard-import
+import numpy as np
 
 
 def test_myexchange_n2_hfs_sto3g():
@@ -33,7 +34,6 @@ def test_myexchange_n2_hfs_sto3g():
     ham1 = REffHam([RGridGroup(mol.obasis, grid, [RDiracExchange()])])
     ham2 = REffHam([RGridGroup(mol.obasis, grid, [RMyDiracExchange()])])
     ham3 = REffHam([RGridGroup(mol.obasis, grid, [RLibXCLDA('x')])])
-
 
     dm_alpha = mol.exp_alpha.to_dm()
     ham1.reset(dm_alpha)
@@ -52,28 +52,104 @@ def test_myexchange_n2_hfs_sto3g():
     assert op1.distance_inf(op2) < 1e-3
 
 
-#def test_becke_hartree_h3_hfs_321g():
-#    fn_fchk = context.get_fn('test/h3_hfs_321g.fchk')
-#    mol = IOData.from_file(fn_fchk)
-#    grid = BeckeMolGrid(mol.coordinates, mol.numbers, mol.pseudo_numbers, random_rotate=False, mode='keep')
-#
-#    er = mol.obasis.compute_electron_repulsion(mol.lf)
-#    ham1 = UEffHam([UDirectTerm(er, 'hartree')])
-#    ham2 = UEffHam([UGridGroup(mol.obasis, grid, [UBeckeHartree(8)])])
-#
-#    dm_alpha = mol.exp_alpha.to_dm()
-#    dm_beta = mol.exp_beta.to_dm()
-#    ham1.reset(dm_alpha, dm_beta)
-#    ham2.reset(dm_alpha, dm_beta)
-#    energy1 = ham1.compute_energy()
-#    energy2 = ham2.compute_energy()
-#    assert abs(energy1 - energy2) < 1e-3
-#
-#    fock_alpha1 = mol.lf.create_two_index()
-#    fock_beta1 = mol.lf.create_two_index()
-#    fock_alpha2 = mol.lf.create_two_index()
-#    fock_beta2 = mol.lf.create_two_index()
-#    ham1.compute_fock(fock_alpha1, fock_beta1)
-#    ham2.compute_fock(fock_alpha2, fock_beta2)
-#    assert fock_alpha1.distance_inf(fock_alpha2) < 1e-3
-#    assert fock_beta1.distance_inf(fock_beta2) < 1e-3
+# CAUTION! For some reason the values at extra large mu are crazy
+# also, values at small mus are not so good.
+
+def test_modified_exchange_simple():
+    # Results are compared with values obtained with a Mathematica Notebook
+    # rhos for rs = 0.5, 0.9 and 1.0
+
+    rho =  np.array([1.90986, 0.327479, 0.238732])
+    mu = 1.0
+    c = 1.0
+    alpha = 2.0
+    result1 = np.array([-0.57982591, -0.39814474, -0.369785])
+    result0 = modified_exchange_energy(rho, mu, c, alpha, np.zeros(3))
+    assert (abs(result0 - result1) < 1e-5 ).all()
+
+
+def test_modified_exchange_pot_simple():
+    # Results are compared with values obtained with a Mathematica Notebook
+    # rhos for rs = 0.5, 0.9 and 1.0
+    rho =  np.array([1.90986, 0.327479, 0.238732])
+    mu = 1.0
+    c = 1.0
+    alpha = 2.0
+    result1 = np.array([-0.691351, -0.489874, -0.457539])
+    result0 = modified_exchange_potential(rho, mu, c, alpha, np.zeros(3))
+    assert (abs(result0 - result1) < 1e-5 ).all()
+
+
+def test_modifiedexchange_n2_hfs_sto3g():
+    fn_fchk = context.get_fn('test/n2_hfs_sto3g.fchk')
+    mol = IOData.from_file(fn_fchk)
+    grid = BeckeMolGrid(mol.coordinates, mol.numbers, mol.pseudo_numbers, random_rotate=False, mode='keep')
+
+    ham1 = REffHam([RGridGroup(mol.obasis, grid, [RDiracExchange()])])
+    ham2 = REffHam([RGridGroup(mol.obasis, grid, [RModifiedExchange(mu=100.0, c=0.0, alpha=1.0)])])
+
+    dm_alpha = mol.exp_alpha.to_dm()
+    ham1.reset(dm_alpha)
+    ham2.reset(dm_alpha)
+    energy1 = ham1.compute_energy()
+    energy2 = ham2.compute_energy()
+    assert abs(energy1 - energy2) < 1e-2
+    op1 = mol.lf.create_two_index()
+    op2 = mol.lf.create_two_index()
+    ham1.compute_fock(op1)
+    ham2.compute_fock(op2)
+    assert op1.distance_inf(op2) < 1e-2
+
+def test_modifiedexchange_n2_hfs_sto3g2():
+    fn_fchk = context.get_fn('test/n2_hfs_sto3g.fchk')
+    mol = IOData.from_file(fn_fchk)
+    grid = BeckeMolGrid(mol.coordinates, mol.numbers, mol.pseudo_numbers, random_rotate=False, mode='keep')
+
+    mu = 100.0
+    c = 1.5 * mu
+    import math as m
+    alpha = (27.0 * mu) / (8 * m.sqrt(m.pi))
+    ham1 = REffHam([RGridGroup(mol.obasis, grid, [RDiracExchange()])])
+    ham2 = REffHam([RGridGroup(mol.obasis, grid, [RModifiedExchange(mu=mu, c=c, alpha=alpha)])])
+
+    dm_alpha = mol.exp_alpha.to_dm()
+    ham1.reset(dm_alpha)
+    ham2.reset(dm_alpha)
+    energy1 = ham1.compute_energy()
+    energy2 = ham2.compute_energy()
+    assert abs(energy1 - energy2) < 1e-2
+    op1 = mol.lf.create_two_index()
+    op2 = mol.lf.create_two_index()
+    ham1.compute_fock(op1)
+    ham2.compute_fock(op2)
+    assert op1.distance_inf(op2) < 1e-2
+
+
+def test_modifiedexchange_h3_hfs_321g():
+    fn_fchk = context.get_fn('test/h3_hfs_321g.fchk')
+    mol = IOData.from_file(fn_fchk)
+    grid = BeckeMolGrid(mol.coordinates, mol.numbers, mol.pseudo_numbers, random_rotate=False, mode='keep')
+
+    mu = 100.0
+    c = 1.5 * mu
+    import math as m
+    alpha = (27.0 * mu) / (8 * m.sqrt(m.pi))
+    ham1 = UEffHam([UGridGroup(mol.obasis, grid, [UDiracExchange()])])
+    ham2 = UEffHam([UGridGroup(mol.obasis, grid, [UModifiedExchange(mu=mu, c=c, alpha=alpha)])])
+
+    dm_alpha = mol.exp_alpha.to_dm()
+    dm_beta = mol.exp_beta.to_dm()
+    ham1.reset(dm_alpha, dm_beta)
+    ham2.reset(dm_alpha, dm_beta)
+    energy1 = ham1.compute_energy()
+    energy2 = ham2.compute_energy()
+    assert abs(energy1 - energy2) < 1e-2
+
+    fock_alpha1 = mol.lf.create_two_index()
+    fock_beta1 = mol.lf.create_two_index()
+    fock_alpha2 = mol.lf.create_two_index()
+    fock_beta2 = mol.lf.create_two_index()
+    ham1.compute_fock(fock_alpha1, fock_beta1)
+    ham2.compute_fock(fock_alpha2, fock_beta2)
+    assert fock_alpha1.distance_inf(fock_alpha2) < 1e-2
+    assert fock_beta1.distance_inf(fock_beta2) < 1e-2
