@@ -264,7 +264,7 @@ class UShortRangeAExchange(ModifiedExchange):
         derived_coeff = -coeff * (4.0 / 3.0) * 2 ** (1.0 / 3.0)
         rho = cache['all_%s' % select][:, 0]
         pot = np.zeros(grid.size)
-        pot[:] = derived_coeff * (rho) ** (1.0 / 3.0)
+        pot[:] = derived_coeff * rho ** (1.0 / 3.0)
         return pot
 
     @doc_inherit(GridObservable)
@@ -295,7 +295,7 @@ def modified_exchange_energy(rho, mu, c, alpha, output):
     from scipy.special import erf as erf
 
     for i in range(len(rho)):
-        if rho[i] < 1e-15:
+        if rho[i] < 1e-8 or mu < 1e-8:
             output[i] = 0.
         else:
             rho_inv = 1.0 / rho[i]
@@ -329,7 +329,7 @@ def modified_exchange_potential(rho, mu, c, alpha, output):
     from scipy.special import erf as erf
 
     for i in range(len(rho)):
-        if rho[i] < 1e-15:
+        if rho[i] < 1e-8 or mu < 1e-8:
             output[i] += 0.
         else:
             rho_inv = 1.0 / rho[i]

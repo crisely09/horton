@@ -107,9 +107,9 @@ def test_modifiedexchange_n2_hfs_sto3g_2():
     grid = BeckeMolGrid(mol.coordinates, mol.numbers, mol.pseudo_numbers, random_rotate=False, mode='keep')
 
     mu = 100.0
-    c = 1.5 * mu
+    alpha = 1.5 * mu
     import math as m
-    alpha = (27.0 * mu) / (8 * m.sqrt(m.pi))
+    c = (27.0 * mu) / (8 * m.sqrt(m.pi))
     ham1 = REffHam([RGridGroup(mol.obasis, grid, [RDiracExchange()])])
     ham2 = REffHam([RGridGroup(mol.obasis, grid, [RModifiedExchange(mu=mu, c=c, alpha=alpha)])])
 
@@ -118,12 +118,12 @@ def test_modifiedexchange_n2_hfs_sto3g_2():
     ham2.reset(dm_alpha)
     energy1 = ham1.compute_energy()
     energy2 = ham2.compute_energy()
-    assert abs(energy1 - energy2) < 1e-2
+    assert abs(energy1 - energy2) < 1e-6
     op1 = mol.lf.create_two_index()
     op2 = mol.lf.create_two_index()
     ham1.compute_fock(op1)
     ham2.compute_fock(op2)
-    assert op1.distance_inf(op2) < 1e-2
+    assert op1.distance_inf(op2) < 1e-6
 
 
 def test_modifiedexchange_n2_hfs_sto3g_3():
@@ -155,6 +155,177 @@ def test_modifiedexchange_n2_hfs_sto3g_3():
     op_diff.iadd(op2, -1)
     opdiff = op_diff.distance_inf(op3)
     assert opdiff < 1e-10
+
+
+def test_modifiedexchange_n2_hfs_sto3g_4():
+    fn_fchk = context.get_fn('test/n2_hfs_sto3g.fchk')
+    mol = IOData.from_file(fn_fchk)
+    grid = BeckeMolGrid(mol.coordinates, mol.numbers, mol.pseudo_numbers, random_rotate=False, mode='keep')
+
+    ham1 = REffHam([RGridGroup(mol.obasis, grid, [RDiracExchange()])])
+    #ham2 = REffHam([RGridGroup(mol.obasis, grid, [RModifiedExchange(mu=0.0, c=0.0, alpha=1.0)])])
+    ham3 = REffHam([RGridGroup(mol.obasis, grid, [RShortRangeAExchange(mu=0.0, c=0.0, alpha=1.0)])])
+
+    dm_alpha = mol.exp_alpha.to_dm()
+    ham1.reset(dm_alpha)
+    #ham2.reset(dm_alpha)
+    ham3.reset(dm_alpha)
+    energy1 = ham1.compute_energy()
+    #energy2 = ham2.compute_energy()
+    energy3 = ham3.compute_energy()
+    #print "energy1 ", energy1
+    #print "energy3 ", energy3
+    #energydiff = energy1 - energy2
+    #assert  abs(energydiff - energy3) < 1e-10
+
+    op1 = mol.lf.create_two_index()
+    #op2 = mol.lf.create_two_index()
+    op3 = mol.lf.create_two_index()
+    ham1.compute_fock(op1)
+    #ham2.compute_fock(op2)
+    ham3.compute_fock(op3)
+    #op_diff = op1.copy()
+    #op_diff.iadd(op2, -1)
+    #opdiff = op_diff.distance_inf(op3)
+    #assert opdiff < 1e-10
+
+
+test_modifiedexchange_n2_hfs_sto3g_4()
+
+def test_modifiedexchange_he_avqz0():
+    numbers = np.array([2])
+    coordinates = np.array([[0.,0.,0.]])
+    #obasis = get_gobasis(coordinates, numbers, '6-31G*')
+    obasis = get_gobasis(coordinates, numbers, 'aug-cc-pvqz')
+
+    mol = IOData(numbers=numbers, coordinates=coordinates, obasis=obasis)
+
+    lf = DenseLinalgFactory(obasis.nbasis)
+    mol.er = obasis.compute_electron_repulsion(lf)
+    mol.kin = obasis.compute_kinetic(lf)
+    mol.na = obasis.compute_nuclear_attraction(mol.coordinates, mol.pseudo_numbers, lf)
+    mol.olp = obasis.compute_overlap(lf)
+
+    # Define a numerical integration grid needed the XC functionals
+    grid = BeckeMolGrid(mol.coordinates, mol.numbers, mol.pseudo_numbers)
+
+    # Create alpha orbitals
+    exp_alpha = lf.create_expansion()
+
+    # Initial guess
+    guess_core_hamiltonian(mol.olp, mol.kin, mol.na, exp_alpha)
+
+    # Construct the restricted HF effective Hamiltonian
+    external = {'nn': compute_nucnuc(mol.coordinates, mol.pseudo_numbers)}
+    terms = [
+        RTwoIndexTerm(mol.kin, 'kin'),
+        RDirectTerm(mol.er, 'hartree'),
+        RTwoIndexTerm(mol.na, 'ne'),
+        RGridGroup(obasis, grid, [
+            #RShortRangeAExchange(mu=0.1, c=0.0, alpha=1.0),#]),
+            RLibXCLDA('x'),
+            RLibXCLDA('c_vwn'),
+    ]),
+
+    ]
+    ham = REffHam(terms, external)
+
+    # Decide how to occupy the orbitals (5 alpha electrons)
+    occ_model = AufbauOccModel(1)
+
+    # Converge WFN with Optimal damping algorithm (ODA) SCF
+    # - Construct the initial density matrix (needed for ODA).
+    occ_model.assign(exp_alpha)
+    dm_alpha = exp_alpha.to_dm()
+    # - SCF solver
+    scf_solver = EDIIS2SCFSolver(1e-6)
+    scf_solver(ham, lf, mol.olp, occ_model, dm_alpha)
+
+    # Derive orbitals (coeffs, energies and occupations) from the Fock and density
+    # matrices. The energy is also computed to store it in the output file below.
+    mu = 3.0
+    alpha = 1.5 * mu
+    import math as m
+    c = (27.0 * mu) / (8 * m.sqrt(m.pi))
+    fock_alpha = lf.create_two_index()
+    ham.reset(dm_alpha)
+    mol.total_energy = ham.compute_energy()
+    ham1 = REffHam([RGridGroup(mol.obasis, grid, [RDiracExchange()])])
+    ham2 = REffHam([RGridGroup(mol.obasis, grid, [RModifiedExchange(mu=mu, c=c, alpha=alpha)])])
+
+    dm_alpha = exp_alpha.to_dm()
+    ham1.reset(dm_alpha)
+    ham2.reset(dm_alpha)
+    energy1 = ham1.compute_energy()
+    energy2 = ham2.compute_energy()
+    #print abs(energy1 - energy2)
+    #print ((energy2/energy1)-1)*100
+    op1 = lf.create_two_index()
+    op2 = lf.create_two_index()
+    ham1.compute_fock(op1)
+    ham2.compute_fock(op2)
+    #print op1.distance_inf(op2)
+
+
+test_modifiedexchange_he_avqz0()
+
+def test_modifiedexchange_he_avqz():
+    numbers = np.array([2])
+    coordinates = np.array([[0.,0.,0.]])
+    #obasis = get_gobasis(coordinates, numbers, '6-31G*')
+    obasis = get_gobasis(coordinates, numbers, 'aug-cc-pvqz')
+
+    mol = IOData(numbers=numbers, coordinates=coordinates, obasis=obasis)
+
+    lf = DenseLinalgFactory(obasis.nbasis)
+    mol.er = obasis.compute_electron_repulsion(lf)
+    mol.kin = obasis.compute_kinetic(lf)
+    mol.na = obasis.compute_nuclear_attraction(mol.coordinates, mol.pseudo_numbers, lf)
+    mol.olp = obasis.compute_overlap(lf)
+
+    # Define a numerical integration grid needed the XC functionals
+    grid = BeckeMolGrid(mol.coordinates, mol.numbers, mol.pseudo_numbers)
+
+    # Create alpha orbitals
+    exp_alpha = lf.create_expansion()
+
+    # Initial guess
+    guess_core_hamiltonian(mol.olp, mol.kin, mol.na, exp_alpha)
+
+    # Construct the restricted HF effective Hamiltonian
+    external = {'nn': compute_nucnuc(mol.coordinates, mol.pseudo_numbers)}
+    terms = [
+        RTwoIndexTerm(mol.kin, 'kin'),
+        RDirectTerm(mol.er, 'hartree'),
+        RTwoIndexTerm(mol.na, 'ne'),
+        RGridGroup(obasis, grid, [
+            RShortRangeAExchange(mu=0.1, c=0.0, alpha=1.0),#]),
+            #RLibXCLDA('x'),
+            RLibXCLDA('c_vwn'),
+    ]),
+
+    ]
+    ham = REffHam(terms, external)
+
+    # Decide how to occupy the orbitals (5 alpha electrons)
+    occ_model = AufbauOccModel(1)
+
+    # Converge WFN with Optimal damping algorithm (ODA) SCF
+    # - Construct the initial density matrix (needed for ODA).
+    occ_model.assign(exp_alpha)
+    dm_alpha = exp_alpha.to_dm()
+    # - SCF solver
+    scf_solver = EDIIS2SCFSolver(1e-6)
+    scf_solver(ham, lf, mol.olp, occ_model, dm_alpha)
+
+    # Derive orbitals (coeffs, energies and occupations) from the Fock and density
+    # matrices. The energy is also computed to store it in the output file below.
+    fock_alpha = lf.create_two_index()
+    ham.reset(dm_alpha)
+    mol.total_energy = ham.compute_energy()
+    ham.compute_fock(fock_alpha)
+    exp_alpha.from_fock_and_dm(fock_alpha, dm_alpha, mol.olp)
+#test_modifiedexchange_he_avqz()
 
 
 def test_modifiedexchange_h3_hfs_321g():

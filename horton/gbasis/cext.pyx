@@ -1121,6 +1121,57 @@ cdef class GOBasis(GBasis):
             norb, &iorbs[0], &output[0, 0])
         return output
 
+    def compute_grid_orbitals_bfns(self, exp,
+                                  np.ndarray[double, ndim=2] points not None,
+                                  np.ndarray[long, ndim=1] iorbs not None,
+                                  np.ndarray[double, ndim=2] output=None):
+        '''Compute the orbitals on a grid for a given set of expansion coefficients.
+
+           **Arguments:**
+
+           exp
+                An expansion object. For now, this must be a DenseExpansion object.
+
+           points
+                A Numpy array with grid points, shape (npoint,3).
+
+           iorbs
+                The indexes of the orbitals to be computed. If not given, the
+                orbitals with a non-zero occupation number are computed
+
+           **Optional arguments:**
+
+           output
+                An output array, shape (npoint, len(iorbs)). The results are
+                added to this array. When not given, an output array is
+                allocated and the result is returned.
+
+           **Warning:** the results are added to the output array!
+
+           **Returns:** the output array. (It is allocated when not given.)
+        '''
+        # Do some type checking
+        cdef np.ndarray[double, ndim=2] coeffs = exp.coeffs
+        self.check_matrix_coeffs(coeffs)
+        nfn = coeffs.shape[1]
+        nfn = self.nbasis
+        assert points.flags['C_CONTIGUOUS']
+        npoint = points.shape[0]
+        assert points.shape[1] == 3
+        assert iorbs.flags['C_CONTIGUOUS']
+        norb = iorbs.shape[0]
+        if output is None:
+            output = np.zeros((npoint, norb), float)
+        else:
+            assert output.flags['C_CONTIGUOUS']
+            assert output.shape[0] == npoint
+            assert output.shape[1] == norb
+        # compute
+        (<gbasis.GOBasis*>self._this).compute_grid1_bfns(
+            nfn, &coeffs[0, 0], npoint, &points[0, 0],
+            norb, &iorbs[0], &output[0, 0])
+        return output
+
     def _compute_grid1_dm(self, dm, np.ndarray[double, ndim=2] points not None,
                           GB1DMGridFn grid_fn not None, np.ndarray output not None,
                           double epsilon=0):

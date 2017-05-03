@@ -298,6 +298,34 @@ void GOBasis::compute_grid1_exp(long nfn, double* coeffs, long npoint, double* p
     delete[] work_basis;
 }
 
+void GOBasis::compute_grid1_bfns(long nfn, double* coeffs, long npoint, double* points, long norb, long* iorbs, double* output) {
+    // The work array contains the basis functions evaluated at the grid point,
+    // and optionally some of its derivatives.
+    GB1ExpGridBasisFn grid_fn = GB1ExpGridBasisFn(get_max_shell_type(), nfn, iorbs, norb);
+
+    long nwork = get_nbasis()*grid_fn.get_dim_work();
+    long dim_output = grid_fn.get_dim_output();
+    double* work_basis = new double[nwork];
+
+    for (long ipoint=0; ipoint<npoint; ipoint++) {
+        // A) clear the basis functions.
+        memset(work_basis, 0, nwork*sizeof(double));
+
+        // B) evaluate the basis functions in the current point.
+        compute_grid_point1(work_basis, points, &grid_fn);
+
+        // C) Use the basis function results and the density matrix to evaluate
+        // the function at the grid point. The result is added to the output.
+        grid_fn.compute_point_from_exp(work_basis, coeffs, get_nbasis(), output);
+
+        // D) Prepare for next iteration
+        output += dim_output;
+        points += 3;
+    }
+
+    delete[] work_basis;
+}
+
 void GOBasis::compute_grid1_dm(double* dm, long npoint, double* points, GB1DMGridFn* grid_fn, double* output, double epsilon, double* dmmaxrow) {
     // The work array contains the basis functions evaluated at the grid point,
     // and optionally some of its derivatives.

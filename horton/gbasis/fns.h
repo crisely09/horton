@@ -295,6 +295,56 @@ class GB1ExpGridOrbitalFn : public GB1ExpGridFn  {
 
 
 /** @brief
+      Evaluates a selection of basis functions on a grid.
+
+    Content of work_basis (at one grid point):
+      [0 Basis function value.
+    Content of the argument 'output' (at one grid point):
+      [0-norb] Values of the orbitals.
+  */
+class GB1ExpGridBasisFn : public GB1ExpGridFn  {
+ public:
+  /** @brief
+        Construct a GB1ExpGridBasisFn object.
+
+      @param max_shell_type
+        The maximum shell type in the basis set.
+
+      @param nfn
+        The number of basis functions.
+
+      @param iorbs
+        An array with functions to be computed.
+
+      @param norb
+        The number of elements in iorbs.
+    */
+  GB1ExpGridBasisFn(long max_shell_type, long nfn, long* iorbs, long norb)
+      : GB1ExpGridFn(max_shell_type, nfn, 1, norb), poly_work{0.0}, offset(0),
+        iorbs(iorbs), norb(norb) {}
+
+  //! Reset calculator for a new contraction. (See base class for details.)
+  virtual void reset(long _shell_type0, const double* _r0, const double* _point);
+
+  /** @brief
+        Add contributions to work array for current grid point and given primitive shell.
+        (See base class for more details.)
+    */
+  virtual void add(double coeff, double alpha0, const double* scales0);
+
+  //! Compute (final) results for a given grid point. (See base class for details.)
+  virtual void compute_point_from_exp(double* work_basis, double* coeffs,
+                                      long nbasis, double* output);
+
+ protected:
+  double poly_work[MAX_NCART_CUMUL];  //!< Work array with Cartesian polynomials.
+  long offset;  //!< Offset for the polynomials for the density.
+  long* iorbs;  //!< Array of indices of orbitals to be evaluated on grid.
+  long norb;    //!< The number of elements in iorbs.
+};
+
+
+/** @brief
       Base class for GB1 grid calculators that use the first-order density matrix
       coefficients.
   */
