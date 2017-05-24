@@ -28,10 +28,14 @@ from horton.grid.molgrid import BeckeMolGrid
 from horton.grid.poisson import solve_poisson_becke
 from horton.utils import doc_inherit
 
+np.set_printoptions(threshold=np.nan)
 
 __all__ = ['RCustomGridObservable', 'RModifiedExchange', 'UModifiedExchange',
             'RShortRangeAExchange', 'UShortRangeAExchange',
-            'modified_exchange_energy', 'modified_exchange_potential']
+            'modified_exchange_energy', 'modified_exchange_potential',
+            'ModifiedCorrelation', 'RShortRangeACorrelation',
+            'UShortRangeACorrelation', 'check_energy_array',
+            'compute_log', 'compute_exp', 'compute_interpolant']
 
 
 class RCustomGridObservable(GridObservable):
@@ -139,10 +143,16 @@ class ModifiedExchange(GridObservable):
         label : str
             A label for this observable.
 
-        coeff : float
-            The coefficient Cx in front of the Dirac exchange energy. It defaults to the
-            uniform electron gas value, i.e. :math:`C_x = \frac{3}{4}
-            \left(\frac{3}{\pi}\right)^{1/3}`.
+        mu: float
+            The reange-separation parameter
+
+        c: float
+            The coefficient of the gaussian function of the modified
+            potential.
+
+        alpha: float
+            The exponent of  the gaussian function fo the modified
+            potential.
         """
         self.mu = mu
         self.c = c
@@ -347,3 +357,145 @@ def modified_exchange_potential(rho, mu, c, alpha, output):
             pot2 = - 0.5 * c * erf(var1/alpha) - (mu * erf(var1/mu)) / (m.pi ** (1.0 / 2.0))
             output[i] += pot1 + pot2
     return output
+
+
+class ModifiedCorrelation(GridObservable):
+    """Common code for the Modified (Asymptotic) SR-Correlation Functional implementations."""
+
+    df_level = DF_LEVEL_LDA
+
+    def __init__(self, label='c_erfgauss', mu=0.0):
+        r"""Initialize a ModifiedCorrelation instance.
+
+        Parameters
+        ----------
+        label : str
+            A label for this observable.
+
+        mu: float
+            The reange-separation parameter
+
+        """
+        self.mu = mu
+        self.interpolant = None
+        GridObservable.__init__(self, label)
+
+    def compute_rsgrid(self, rho):
+        rs = np.copy(rho)
+        rs = np.power((3.0/(4.0*np.pi*rs)), 1.0/3.0)
+        return rs
+
+    def _update_pot(self, cache, grid, select):
+        """Recompute the correlation potential if invalid.
+
+        Parameters
+        ----------
+        cache : Cache
+            Storage for the potentials.
+        grid : IntGrid
+            A numerical integration grid.
+        select : str
+            'alpha' or 'beta'
+        """
+        rho = cache['all_%s' % select][:, 0]
+        pot, new = cache.load('pot_c_%s' % select, alloc=grid.size)
+        if new:
+            ec = self._update_ec(cache, grid, select)
+            which = np.where(rho > 1e-7)
+            rs = self.compute_rsgrid(rho[which])
+            pot[which] = ec[which] - ec[which]*self.interpolant(rs, 1)/np.power((36*np.pi*rho[which]), 1.0/3.0)
+        return pot
+
+    def _update_ec(self, cache, grid, select):
+        """Recompute the correlation energy per particle if invalid.
+
+        Parameters
+        ----------
+        cache : Cache
+            Storage for the potentials.
+        grid : IntGrid
+            A numerical integration grid.
+        select : str
+            'alpha' or 'beta'
+        """
+        rho = cache['all_%s' % select][:, 0]
+        ec, new = cache.load('ec_c_%s' % select, alloc=grid.size)
+        if new:
+            if not self.interpolant:
+                self.interpolant = compute_interpolant(self.mu)
+            which = np.where(rho > 5e-7)
+            rs = self.compute_rsgrid(rho[which])
+            ectmp = self.interpolant(rs)
+            weird = np.where(ectmp > 0.0)
+            if weird[0]:
+                #print "============= WARNING!! Rs TOO LARGE =============="
+            ec[which] = compute_exp(ectmp)
+        return ec
+
+class RShortRangeACorrelation(ModifiedCorrelation):
+    """The Modified (Asymptotic) Correlation Functional for restricted wavefunctions."""
+
+    @doc_inherit(GridObservable)
+    def compute_energy(self, cache, grid):
+        ec = self._update_ec(cache, grid, 'alpha')
+        rho = cache['all_alpha'][:, 0]
+        return (2.0) * grid.integrate(ec, rho)
+
+    @doc_inherit(GridObservable)
+    def add_pot(self, cache, grid, pots_alpha):
+        pots_alpha[:, 0] += self._update_pot(cache, grid, 'alpha')
+
+
+class UShortRangeACorrelation(ModifiedCorrelation):
+    """The Modified (Asymptotic) Correlation Functional for unrestricted wavefunctions."""
+
+    @doc_inherit(GridObservable)
+    def compute_energy(self, cache, grid):
+        ec_alpha = self._update_ec(cache, grid, 'alpha')
+        ec_beta = self._update_ec(cache, grid, 'beta')
+        rho_alpha = cache['all_alpha'][:, 0]
+        rho_beta = cache['all_beta'][:, 0]
+        return (grid.integrate(ec_alpha, rho_alpha) +
+                              grid.integrate(ec_beta, rho_beta))
+
+    @doc_inherit(GridObservable)
+    def add_pot(self, cache, grid, pots_alpha, pots_beta):
+        pots_alpha[:, 0] += self._update_pot(cache, grid, 'alpha')
+        pots_beta[:, 0] += self._update_pot(cache, grid, 'beta')
+
+
+def check_energy_array(earray, emin=1e-8):
+    new = np.copy(earray)
+    for i, e in enumerate(earray):
+        if 0.0 + e > -1e-9:
+            new[i] = - emin
+        elif e > 0:
+            new[i] = - e
+    return new
+
+def compute_log(y):
+    fx = np.copy(y)
+    fx = np.log(-fx)
+    return fx
+
+def compute_exp(fx):
+    e = np.copy(fx)
+    fx = - np.exp(e)
+    return fx
+
+def compute_interpolant(mu):
+    #load and contruct arrays for interpolation
+    from scipy.interpolate import CubicSpline
+    if mu == 0.0:
+        egrid = np.load("coulomb_grids.npy")
+        x = egrid[:,0]
+        y = egrid[:,1]
+    else:
+        egrid = np.load('sr_grids.npy')
+        mus = np.where(abs(egrid[:,1] - mu) < 1e-10)
+        x = np.squeeze(egrid[mus,0])
+        y = np.squeeze(egrid[mus,2])
+    y = check_energy_array(y)
+    fx = compute_log(y)
+    interpolant = CubicSpline(x, fx, axis=0, bc_type="natural")
+    return interpolant
