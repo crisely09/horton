@@ -188,9 +188,8 @@ def test_modifiedexchange_n2_hfs_sto3g_4():
     #op_diff.iadd(op2, -1)
     #opdiff = op_diff.distance_inf(op3)
     #assert opdiff < 1e-10
+#test_modifiedexchange_n2_hfs_sto3g_4()
 
-
-test_modifiedexchange_n2_hfs_sto3g_4()
 
 def test_modifiedexchange_he_avqz0():
     numbers = np.array([2])
@@ -258,16 +257,12 @@ def test_modifiedexchange_he_avqz0():
     ham2.reset(dm_alpha)
     energy1 = ham1.compute_energy()
     energy2 = ham2.compute_energy()
-    #print abs(energy1 - energy2)
-    #print ((energy2/energy1)-1)*100
     op1 = lf.create_two_index()
     op2 = lf.create_two_index()
     ham1.compute_fock(op1)
     ham2.compute_fock(op2)
-    #print op1.distance_inf(op2)
+#test_modifiedexchange_he_avqz0()
 
-
-test_modifiedexchange_he_avqz0()
 
 def test_modifiedexchange_he_avqz():
     numbers = np.array([2])
@@ -325,7 +320,6 @@ def test_modifiedexchange_he_avqz():
     mol.total_energy = ham.compute_energy()
     ham.compute_fock(fock_alpha)
     exp_alpha.from_fock_and_dm(fock_alpha, dm_alpha, mol.olp)
-#test_modifiedexchange_he_avqz()
 
 
 def test_modifiedexchange_h3_hfs_321g():
@@ -399,3 +393,253 @@ def test_modifiedexchange_h3_hfs_321g_2():
     opdiff_beta = fock_diff_beta.distance_inf(fock_beta3)
     assert opdiff_alpha < 1e-10
     assert opdiff_beta <  1e-10
+
+
+def test_coulombcorrelation_0():
+    mu = 0.0
+    rs = np.arange(0.,30.,0.1)
+    #print 'rs ', rs
+    interpolant = compute_interpolant(mu)
+    ectmp = interpolant(rs)
+    ec = compute_exp(ectmp)
+    #print "Correlation energy ", ec[[11,21]]
+
+#test_coulombcorrelation_0()
+
+def test_modifiedcorrelation_n2_hfs_sto3g_1():
+    fn_fchk = context.get_fn('test/n2_hfs_sto3g.fchk')
+    mol = IOData.from_file(fn_fchk)
+    grid = BeckeMolGrid(mol.coordinates, mol.numbers, mol.pseudo_numbers, random_rotate=False, mode='keep')
+
+    ham1 = REffHam([RGridGroup(mol.obasis, grid, [RLibXCLDA('c_vwn')])])
+    ham2 = REffHam([RGridGroup(mol.obasis, grid, [RShortRangeACorrelation(mu=0.0)])])
+
+    dm_alpha = mol.exp_alpha.to_dm()
+    ham1.reset(dm_alpha)
+    ham2.reset(dm_alpha)
+    energy1 = ham1.compute_energy()
+    energy2 = ham2.compute_energy()
+    #print "energy 1 ", energy1
+    #print "energy 2 ", energy2
+    #assert abs(energy1 - energy2) < 1e-2
+    op1 = mol.lf.create_two_index()
+    op2 = mol.lf.create_two_index()
+    ham1.compute_fock(op1)
+    ham2.compute_fock(op2)
+    #print "potential 1 ", op1._array
+    #print "potential 2 ", op2._array
+    #print "distance ", op1.distance_inf(op2)
+    #assert op1.distance_inf(op2) < 1e-2
+#test_modifiedcorrelation_n2_hfs_sto3g_1()
+
+
+def test_modifiedcorrelation_he_hf():
+    mol = IOData(coordinates=np.array([[0.,0.,0.]]), numbers=np.array([2]))
+
+    # Create a Gaussian basis set
+    obasis = get_gobasis(mol.coordinates, mol.numbers, '6-31G')
+
+    # Create a linalg factory
+    lf = DenseLinalgFactory(obasis.nbasis)
+
+    # Compute Gaussian integrals
+    olp = obasis.compute_overlap(lf)
+    kin = obasis.compute_kinetic(lf)
+    na = obasis.compute_nuclear_attraction(mol.coordinates, mol.pseudo_numbers, lf)
+    er = obasis.compute_electron_repulsion(lf)
+
+    # Create alpha orbitals
+    exp_alpha = lf.create_expansion()
+
+    # Initial guess
+    guess_core_hamiltonian(olp, kin, na, exp_alpha)
+
+    # Construct the restricted HF effective Hamiltonian
+    external = {'nn': compute_nucnuc(mol.coordinates, mol.pseudo_numbers)}
+    terms = [
+        RTwoIndexTerm(kin, 'kin'),
+        RDirectTerm(er, 'hartree'),
+        RExchangeTerm(er, 'x_hf'),
+        RTwoIndexTerm(na, 'ne'),
+    ]
+    ham = REffHam(terms, external)
+
+    # Decide how to occupy the orbitals (1 alpha electrons)
+    occ_model = AufbauOccModel(1)
+
+    # Converge WFN with plain SCF
+    scf_solver = PlainSCFSolver(1e-6)
+    scf_solver(ham, lf, olp, occ_model, exp_alpha)
+    grid = BeckeMolGrid(mol.coordinates, mol.numbers, mol.pseudo_numbers, random_rotate=False, mode='keep')
+
+    ham1 = REffHam([RGridGroup(obasis, grid, [RLibXCLDA('c_vwn')])])
+    ham2 = REffHam([RGridGroup(obasis, grid, [RShortRangeACorrelation(mu=0.0)])])
+
+    dm_alpha = exp_alpha.to_dm()
+    ham1.reset(dm_alpha)
+    ham2.reset(dm_alpha)
+    energy1 = ham1.compute_energy()
+    energy2 = ham2.compute_energy()
+    #print "energy 1 ", energy1
+    #print "energy 2 ", energy2
+    #assert abs(energy1 - energy2) < 1e-2
+    op1 = lf.create_two_index()
+    op2 = lf.create_two_index()
+    op3 = lf.create_two_index()
+    op4 = lf.create_two_index()
+    ham1.compute_fock(op1)
+    ham2.compute_fock(op2)
+    #print "potential 1 ", op1._array
+    #print "potential 2 ", op2._array
+    #print "distance ", op1.distance_inf(op2)
+#test_modifiedcorrelation_he_hf()
+
+
+def test_modifiedcorrelation_li_hf():
+    mol = IOData(coordinates=np.array([[0.,0.,0.]]), numbers=np.array([3]))
+
+    # Create a Gaussian basis set
+    obasis = get_gobasis(mol.coordinates, mol.numbers, '6-31G')
+
+    # Create a linalg factory
+    lf = DenseLinalgFactory(obasis.nbasis)
+
+    # Compute Gaussian integrals
+    olp = obasis.compute_overlap(lf)
+    kin = obasis.compute_kinetic(lf)
+    na = obasis.compute_nuclear_attraction(mol.coordinates, mol.pseudo_numbers, lf)
+    er = obasis.compute_electron_repulsion(lf)
+
+    # Create alpha orbitals
+    exp_alpha = lf.create_expansion()
+    exp_beta = lf.create_expansion()
+
+    # Initial guess
+    guess_core_hamiltonian(olp, kin, na, exp_alpha, exp_beta)
+
+    # Construct the restricted HF effective Hamiltonian
+    external = {'nn': compute_nucnuc(mol.coordinates, mol.pseudo_numbers)}
+    terms = [
+        UTwoIndexTerm(kin, 'kin'),
+        UDirectTerm(er, 'hartree'),
+        UExchangeTerm(er, 'x_hf'),
+        UTwoIndexTerm(na, 'ne'),
+    ]
+    ham = UEffHam(terms, external)
+
+    # Decide how to occupy the orbitals (5 alpha electrons)
+    occ_model = AufbauOccModel(2,1)
+
+    # Converge WFN with plain SCF
+    scf_solver = PlainSCFSolver(1e-6)
+    scf_solver(ham, lf, olp, occ_model, exp_alpha, exp_beta)
+    grid = BeckeMolGrid(mol.coordinates, mol.numbers, mol.pseudo_numbers, random_rotate=False, mode='keep')
+
+    ham1 = UEffHam([UGridGroup(obasis, grid, [ULibXCLDA('c_vwn')])])
+    ham2 = UEffHam([UGridGroup(obasis, grid, [UShortRangeACorrelation(mu=0.0)])])
+
+    dm_alpha = exp_alpha.to_dm()
+    dm_beta = exp_beta.to_dm()
+    ham1.reset(dm_alpha, dm_beta)
+    ham2.reset(dm_alpha, dm_beta)
+    energy1 = ham1.compute_energy()
+    energy2 = ham2.compute_energy()
+    #print "energy 1 ", energy1
+    #print "energy 2 ", energy2
+    #assert abs(energy1 - energy2) < 1e-2
+    op1 = lf.create_two_index()
+    op2 = lf.create_two_index()
+    op3 = lf.create_two_index()
+    op4 = lf.create_two_index()
+    ham1.compute_fock(op1, op2)
+    ham2.compute_fock(op3, op4)
+    #print "potential 1 ", op1._array
+    #print "potential 2 ", op2._array
+    #assert op1.distance_inf(op2) < 1e-2
+test_modifiedcorrelation_li_hf()
+
+
+def test_modifiedcorrelation_li_hf_mus():
+    mol = IOData(coordinates=np.array([[0.,0.,0.]]), numbers=np.array([3]))
+
+    # Create a Gaussian basis set
+    obasis = get_gobasis(mol.coordinates, mol.numbers, '6-31G')
+
+    # Create a linalg factory
+    lf = DenseLinalgFactory(obasis.nbasis)
+
+    # Compute Gaussian integrals
+    olp = obasis.compute_overlap(lf)
+    kin = obasis.compute_kinetic(lf)
+    na = obasis.compute_nuclear_attraction(mol.coordinates, mol.pseudo_numbers, lf)
+    er = obasis.compute_electron_repulsion(lf)
+
+    # Create alpha orbitals
+    exp_alpha = lf.create_expansion()
+    exp_beta = lf.create_expansion()
+
+    # Initial guess
+    guess_core_hamiltonian(olp, kin, na, exp_alpha, exp_beta)
+
+    # Construct the restricted HF effective Hamiltonian
+    external = {'nn': compute_nucnuc(mol.coordinates, mol.pseudo_numbers)}
+    terms = [
+        UTwoIndexTerm(kin, 'kin'),
+        UDirectTerm(er, 'hartree'),
+        UExchangeTerm(er, 'x_hf'),
+        UTwoIndexTerm(na, 'ne'),
+    ]
+    ham = UEffHam(terms, external)
+
+    # Decide how to occupy the orbitals (5 alpha electrons)
+    occ_model = AufbauOccModel(2,1)
+
+    # Converge WFN with plain SCF
+    scf_solver = PlainSCFSolver(1e-6)
+    scf_solver(ham, lf, olp, occ_model, exp_alpha, exp_beta)
+    grid = BeckeMolGrid(mol.coordinates, mol.numbers, mol.pseudo_numbers, random_rotate=False, mode='keep')
+
+    dm_alpha = exp_alpha.to_dm()
+    dm_beta = exp_beta.to_dm()
+
+    ham1 = UEffHam([UGridGroup(obasis, grid, [UShortRangeACorrelation(mu=0.0)])])
+    ham1.reset(dm_alpha, dm_beta)
+    energy1 = ham1.compute_energy()
+
+    with open('li-mus1.dat', 'w') as fn:
+        for mu in np.arange(0.,7.1, 0.1):
+            ham2 = UEffHam([UGridGroup(obasis, grid, [UShortRangeACorrelation(mu=mu)])])
+            ham2.reset(dm_alpha, dm_beta)
+            energy2 = ham2.compute_energy()
+            fn.write("%.2f \t %.7f\n"% (mu, energy1-energy2))
+
+    with open('li-mus2.dat', 'w') as fn:
+        for mu in range(7,26):
+            ham2 = UEffHam([UGridGroup(obasis, grid, [UShortRangeACorrelation(mu=mu)])])
+            ham2.reset(dm_alpha, dm_beta)
+            energy2 = ham2.compute_energy()
+            fn.write("%.2f \t %.7f\n"% (mu, energy1-energy2))
+
+    with open('li-mus3.dat', 'w') as fn:
+        for mu in [100, 1000, 10000]:
+            ham2 = UEffHam([UGridGroup(obasis, grid, [UShortRangeACorrelation(mu=mu)])])
+            ham2.reset(dm_alpha, dm_beta)
+            energy2 = ham2.compute_energy()
+            fn.write("%.2f \t %.7f\n"% (mu, energy1-energy2))
+#test_modifiedcorrelation_li_hf_mus()
+
+
+def test_table_mus():
+    mus = np.arange(0.,7.2,0.2)
+    rs = np.arange(0.,30.,0.1)
+    #print 'rs ', rs
+    tables = []
+    for mu in mus:
+        #print "mu ", mu
+        interpolant = compute_interpolant(mu)
+        ectmp = interpolant(rs)
+        ec = compute_exp(ectmp)
+        tables.append([list(rs),list(ec)])
+    tables = np.array(tables)
+    np.save("forplots.npy", tables)
+#test_table_mus()
