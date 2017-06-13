@@ -486,7 +486,7 @@ def compute_exp(fx):
 def compute_interpolant(mu):
     #load and contruct arrays for interpolation
     from scipy.interpolate import CubicSpline
-    if mu == 0.0:
+    if abs(mu - 0.0) < 1e-10:
         egrid = np.load("coulomb_grids.npy")
         x = egrid[:,0]
         y = egrid[:,1]
