@@ -188,7 +188,6 @@ def test_modifiedexchange_n2_hfs_sto3g_4():
     #op_diff.iadd(op2, -1)
     #opdiff = op_diff.distance_inf(op3)
     #assert opdiff < 1e-10
-#test_modifiedexchange_n2_hfs_sto3g_4()
 
 
 def test_modifiedexchange_he_avqz0():
@@ -261,7 +260,6 @@ def test_modifiedexchange_he_avqz0():
     op2 = lf.create_two_index()
     ham1.compute_fock(op1)
     ham2.compute_fock(op2)
-#test_modifiedexchange_he_avqz0()
 
 
 def test_modifiedexchange_he_avqz():
@@ -404,7 +402,6 @@ def test_coulombcorrelation_0():
     ec = compute_exp(ectmp)
     #print "Correlation energy ", ec[[11,21]]
 
-#test_coulombcorrelation_0()
 
 def test_modifiedcorrelation_n2_hfs_sto3g_1():
     fn_fchk = context.get_fn('test/n2_hfs_sto3g.fchk')
@@ -430,7 +427,6 @@ def test_modifiedcorrelation_n2_hfs_sto3g_1():
     #print "potential 2 ", op2._array
     #print "distance ", op1.distance_inf(op2)
     #assert op1.distance_inf(op2) < 1e-2
-#test_modifiedcorrelation_n2_hfs_sto3g_1()
 
 
 def test_modifiedcorrelation_he_hf():
@@ -492,7 +488,6 @@ def test_modifiedcorrelation_he_hf():
     #print "potential 1 ", op1._array
     #print "potential 2 ", op2._array
     #print "distance ", op1.distance_inf(op2)
-#test_modifiedcorrelation_he_hf()
 
 
 def test_modifiedcorrelation_li_hf():
@@ -556,7 +551,6 @@ def test_modifiedcorrelation_li_hf():
     #print "potential 1 ", op1._array
     #print "potential 2 ", op2._array
     #assert op1.distance_inf(op2) < 1e-2
-test_modifiedcorrelation_li_hf()
 
 
 def test_modifiedcorrelation_li_hf_mus():
@@ -626,8 +620,6 @@ def test_modifiedcorrelation_li_hf_mus():
             ham2.reset(dm_alpha, dm_beta)
             energy2 = ham2.compute_energy()
             fn.write("%.2f \t %.7f\n"% (mu, energy1-energy2))
-#test_modifiedcorrelation_li_hf_mus()
-
 
 def test_table_mus():
     mus = np.arange(0.,7.2,0.2)
@@ -642,4 +634,3 @@ def test_table_mus():
         tables.append([list(rs),list(ec)])
     tables = np.array(tables)
     np.save("forplots.npy", tables)
-#test_table_mus()
