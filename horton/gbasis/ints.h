@@ -644,4 +644,32 @@ class GB4RAlphaIntegralLibInt : public GB4IntegralLibInt {
 };
 
 
+/** @brief
+        Delta Electron repulsion four-center integrals.
+
+    The potential is \delta(r).
+  */
+class GB4DeltaRepulsionIntegralLibInt : public GB4IntegralLibInt {
+ public:
+  /** @brief
+          Initialize a GB4DeltaRepulsionIntegralLibInt object.
+
+      @param max_shell_type
+          Highest angular momentum index to be expected in the reset method.
+    */
+  explicit GB4DeltaRepulsionIntegralLibInt(long max_shell_type)
+      : GB4IntegralLibInt(max_shell_type) {}
+
+  /** @brief
+          Evaluate the Laplace transform of the ordinary Coulomb potential.
+
+      See Eq. (39) in Ahlrichs' paper. This is basically a rescaled Boys function.
+
+      See base class for more details.
+    */
+  virtual void laplace_of_potential(double prefac, double rho, double t, long mmax,
+                                    double* output);
+};
+
+
 #endif

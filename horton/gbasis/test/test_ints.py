@@ -4294,6 +4294,94 @@ def test_ralpha_repulsion_4_3_2_1():
         result0, -1.0)
 
 
+def get_gauss_repulsion(alphas0, alphas1, alphas2, alphas3, r0, r1, r2, r3,
+                      scales0, scales1, scales2, scales3,
+                      shell_type0, shell_type1, shell_type2, shell_type3, c, alpha):
+    """Get the short-range damped Erf integrals for a primitive shell.
+
+    Parameters
+    ----------
+    alpha0, alpha1, alpha2, alpha3 : float
+        Exponents of the four primitive shells.
+    r0, r1, r2, r3 : np.ndarray, shape=(3,), dtype=float
+        Cartesian coordinates of the centers of the four primitive shells.
+    scales0, scales1, scales2, scales3 : float
+        Normalization prefactors for the Gaussian shells.
+    shell_type0, shell_type1, shell_type2, shell_type3 : int
+        Shell types of the four primitive shells.
+    mu : float
+        The range-separation parameters.
+    """
+    max_shell_type = 4
+    gb4i = GB4GaussIntegralLibInt(max_shell_type, c, alpha)
+
+    nbasis0 = get_shell_nbasis(shell_type0)
+    nbasis1 = get_shell_nbasis(shell_type1)
+    nbasis2 = get_shell_nbasis(shell_type2)
+    nbasis3 = get_shell_nbasis(shell_type3)
+    # Clear the working memory
+    gb4i.reset(shell_type0, shell_type1, shell_type2, shell_type3, r0, r1, r2, r3)
+    # Add a few cobtributions:
+    for alpha0, alpha1, alpha2, alpha3 in zip(alphas0, alphas1, alphas2, alphas3):
+        gb4i.add(1.0, alpha0, alpha1, alpha2, alpha3, scales0, scales1, scales2, scales3)
+    return gb4i.get_work(nbasis0, nbasis1, nbasis2, nbasis3)
+
+
+def check_delta_repulsion(alphas0, alphas1, alphas2, alphas3, r0, r1, r2, r3, scales0,
+                          scales1, scales2, scales3, shell_type0, shell_type1,
+                          shell_type2, shell_type3, result0):
+    """Compare output from HORTON Delta 4-center integrals with reference data.
+
+    The reference data was generated using very pointy Gauss 4-center integrals.
+
+    Parameters
+    ----------
+    alpha0, alpha1, alpha2, alpha3 : float
+        Exponents of the four primitive shells.
+    r0, r1, r2, r3 : np.ndarray, shape=(3,), dtype=float
+        Cartesian coordinates of the centers of the four primitive shells.
+    scales0, scales1, scales2, scales3 : float
+        Normalization prefactors for the Gaussian shells.
+    shell_type0, shell_type1, shell_type2, shell_type3 : int
+        Shell types of the four primitive shells.
+    result0 : np.ndarray, shape=(nbasis, nbasis, nbasis, nbasis), dtype=float
+        The expected result.
+    """
+    max_shell_type = 4
+    max_nbasis = get_shell_nbasis(max_shell_type)
+    gb4i = GB4DeltaIntegralLibInt(max_shell_type)
+    assert gb4i.max_nbasis == max_nbasis
+    assert gb4i.nwork == max_nbasis ** 4
+
+    nbasis0 = get_shell_nbasis(shell_type0)
+    nbasis1 = get_shell_nbasis(shell_type1)
+    nbasis2 = get_shell_nbasis(shell_type2)
+    nbasis3 = get_shell_nbasis(shell_type3)
+    assert result0.shape == (nbasis0, nbasis1, nbasis2, nbasis3)
+    # Clear the working memory
+    gb4i.reset(shell_type0, shell_type1, shell_type2, shell_type3, r0, r1, r2, r3)
+    # Add a few cobtributions:
+    for alpha0, alpha1, alpha2, alpha3 in zip(alphas0, alphas1, alphas2, alphas3):
+        gb4i.add(1.0, alpha0, alpha1, alpha2, alpha3, scales0, scales1, scales2, scales3)
+    result1 = gb4i.get_work(nbasis0, nbasis1, nbasis2, nbasis3)
+    print "reference ", result0
+    assert abs(result1 - result0).max() < 3e-7
+
+
+def test_delta_simple0():
+    check_ralpha_repulsion(
+        np.array([1.]), np.array([1.]),
+        np.array([1.]), np.array([1.]),
+        np.array([0., 0., 0.]), np.array([0., 0., 0.]),
+        np.array([0., 0., 0.]), np.array([0., 0., 0.]),
+        np.array([1.]),
+        np.array([1.]),
+        np.array([1.]),
+        np.array([1.]),
+        0, 0, 0, 0,
+        np.array([[[[0.6960409996]]]]))
+
+
 def check_g09_overlap(fn_fchk):
     fn_log = fn_fchk[:-5] + '.log'
     mol = IOData.from_file(fn_fchk, fn_log)

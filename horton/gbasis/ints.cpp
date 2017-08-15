@@ -987,3 +987,11 @@ void GB4RAlphaIntegralLibInt::laplace_of_potential(double prefac, double rho, do
     output[m] = tfactor*dtaylor(m, alpha, t, prefac);
   }
 }
+
+
+void GB4DeltaIntegralLibInt::laplace_of_potential(double prefac, double rho, double t,
+                                                   long mmax, double* output) {
+  for (long m=0; m <= mmax; m++) {
+    output[m] = exp(-t);
+  }
+}

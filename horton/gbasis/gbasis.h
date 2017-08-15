@@ -204,6 +204,14 @@ class GOBasis : public GBasis {
         void compute_ralpha_repulsion(double* output, double alpha);
 
         /** @brief
+                Computes the Dirac-Delta electron repulsion integrals.
+
+            @param output
+                The output array with the integrals.
+         */
+        void compute_delta_repulsion(double* output);
+
+        /** @brief
                 Computes the (multipole) moment integrals.
 
             @param xyz
