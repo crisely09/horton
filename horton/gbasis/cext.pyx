@@ -2046,11 +2046,11 @@ cdef class GB4RAlphaIntegralLibInt(GB4Integral):
             return (<ints.GB4RAlphaIntegralLibInt*>self._this).get_alpha()
 
 
-cdef class GB4DeltaRepulsionIntegralLibInt(GB4Integral):
-    '''Wrapper for ints.GB4ElectronRepulsionIntegralLibInt, for testing only'''
+cdef class GB4DeltaIntegralLibInt(GB4Integral):
+    '''Wrapper for ints.GB4DeltaIntegralLibInt, for testing only'''
 
     def __cinit__(self, long max_nbasis):
-        self._this = <ints.GB4Integral*>(new ints.GB4DeltaRepulsionIntegralLibInt(max_nbasis))
+        self._this = <ints.GB4Integral*>(new ints.GB4DeltaIntegralLibInt(max_nbasis))
 
 
 #

@@ -277,8 +277,8 @@ void GOBasis::compute_ralpha_repulsion(double* output, double alpha) {
 }
 
 void GOBasis::compute_delta_repulsion(double* output) {
-  GB4DeltaRepulsionIntegralLibInt integral =
-    GB4DeltaRepulsionIntegralLibInt(get_max_shell_type());
+  GB4DeltaIntegralLibInt integral =
+    GB4DeltaIntegralLibInt(get_max_shell_type());
   compute_four_index(output, &integral);
 }
 

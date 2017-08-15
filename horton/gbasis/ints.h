@@ -649,15 +649,15 @@ class GB4RAlphaIntegralLibInt : public GB4IntegralLibInt {
 
     The potential is \delta(r).
   */
-class GB4DeltaRepulsionIntegralLibInt : public GB4IntegralLibInt {
+class GB4DeltaIntegralLibInt : public GB4IntegralLibInt {
  public:
   /** @brief
-          Initialize a GB4DeltaRepulsionIntegralLibInt object.
+          Initialize a GB4DeltaIntegralLibInt object.
 
       @param max_shell_type
           Highest angular momentum index to be expected in the reset method.
     */
-  explicit GB4DeltaRepulsionIntegralLibInt(long max_shell_type)
+  explicit GB4DeltaIntegralLibInt(long max_shell_type)
       : GB4IntegralLibInt(max_shell_type) {}
 
   /** @brief
