@@ -212,6 +212,17 @@ class GOBasis : public GBasis {
         void compute_delta_repulsion(double* output);
 
         /** @brief
+                Computes the Intracule core integrals.
+
+            @param output
+                The output array with the integrals.
+
+            @param u
+                The intracular coordinate.
+         */
+        void compute_intra_density(double* output, double* u);
+
+        /** @brief
                 Computes the (multipole) moment integrals.
 
             @param xyz

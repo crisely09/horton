@@ -672,4 +672,112 @@ class GB4DeltaIntegralLibInt : public GB4IntegralLibInt {
 };
 
 
+//! Base class for Intracule/Extracule densities (four-center) integrals that use LibInt.
+class GB4DensIntegralLibInt : public GB4Integral {
+ public:
+  /** @brief
+          Initialize a GB4IntegralLibInt object.
+
+      @param max_shell_type
+          Highest angular momentum index to be expected in the reset method.
+    */
+  explicit GB4DensIntegralLibInt(long max_shell_type);
+  ~GB4DensIntegralLibInt();
+
+  /** @brief
+          Set internal parameters for a new group of four contractions.
+
+      See base class for details.
+    */
+  virtual void reset(long shell_type0, long shell_type1, long shell_type2, long shell_type3,
+                     const double* r0, const double* r1, const double* r2, const double* r3);
+  /** @brief
+          Add results for a combination of Cartesian primitive shells to the work array.
+
+      See base class for details.
+    */
+  virtual void add(double coeff, double alpha0, double alpha1, double alpha2, double alpha3,
+                   const double* scales0, const double* scales1, const double* scales2,
+                   const double* scales3);
+
+  /** @brief
+          Evaluate the Laplace transform of the the potential.
+
+      For theoretical details and the precise definition of the Laplace transform, we
+      refer to the following paper:
+
+      Ahlrichs, R. A simple algebraic derivation of the Obara-Saika scheme for general
+      two-electron interaction potentials. Phys. Chem. Chem. Phys. 8, 3072–3077 (2006).
+      10.1039/B605188J
+
+      For the general definition of this transform, see Eq. (8) in the reference above.
+      Section 5 contains solutions of the Laplace transform for several popular cases.
+
+      @param prefac
+          Prefactor with which all results in the output array are multiplied.
+
+      @param rho
+          See Eq. (3) in Ahlrichs' paper.
+
+      @param t
+          Rescaled distance between the two centers obtained from the application of the
+          Gaussian product theorem. See Eq. (5) in Ahlrichs' paper.
+
+      @param p
+          Scaled distance between centers A and B. As defined in Ahlrichs' paper eq. (4)
+
+      @param q
+          Scaled distance between centers C and D. As defined in Ahlrichs' paper eq. (4)
+
+      @param mmax
+          Maximum derivative of the Laplace transform to be considered.
+
+      @param output
+          Output array. The size must be at least mmax + 1.
+   */
+  virtual void laplace_of_potential(double prefac, double rho, double t, double* p,
+                                    double* q, long mmax, double* output) = 0;
+
+ private:
+  Libint_eri_t erieval;         //!< LibInt runtime object.
+  libint_arg_t libint_args[4];  //!< Arguments (shell info) for libint.
+  long order[4];                //!< Re-ordering of shells for compatibility with LibInt.
+  double ab[3];                 //!< Relative vector from shell 2 to 0 (LibInt order).
+  double cd[3];                 //!< Relative vector from shell 3 to 1 (LibInt order).
+  double ab2;                   //!< Norm squared of ab.
+  double cd2;                   //!< Norm squared of cd.
+};
+
+
+/** @brief
+        Intracular (four-center) density integrals at coordinate u.
+
+    The potential is \delta(r - u).
+  */
+class GB4IntraDensIntegralLibInt : public GB4DensIntegralLibInt {
+ public:
+  /** @brief
+          Initialize a GB4IntraDensIntegralLibInt object.
+
+      @param max_shell_type
+          Highest angular momentum index to be expected in the reset method.
+    */
+  explicit GB4IntraDensIntegralLibInt(long max_shell_type)
+      : GB4DensIntegralLibInt(max_shell_type), u(u) {}
+
+  /** @brief
+          Evaluate the Laplace transform of the ordinary Coulomb potential.
+
+      See Eq. (39) in Ahlrichs' paper. This is basically a rescaled Boys function.
+
+      See base class for more details.
+    */
+  virtual void laplace_of_potential(double prefac, double rho, double t, double* p,
+                                    double* q, long mmax, double* output) = 0;
+
+  const double get_u() const {return u;} //!< Return the intracular coordinate u.
+
+ private:
+  double* u; //!< Intracular coordinates
+};
 #endif

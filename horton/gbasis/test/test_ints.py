@@ -4309,8 +4309,10 @@ def get_gauss_repulsion(alphas0, alphas1, alphas2, alphas3, r0, r1, r2, r3,
         Normalization prefactors for the Gaussian shells.
     shell_type0, shell_type1, shell_type2, shell_type3 : int
         Shell types of the four primitive shells.
-    mu : float
-        The range-separation parameters.
+    c : float
+        The coefficient of the Gaussian function.
+    alpha : float
+        The exponent of the Gaussian function.
     """
     max_shell_type = 4
     gb4i = GB4GaussIntegralLibInt(max_shell_type, c, alpha)
@@ -4364,12 +4366,12 @@ def check_delta_repulsion(alphas0, alphas1, alphas2, alphas3, r0, r1, r2, r3, sc
     for alpha0, alpha1, alpha2, alpha3 in zip(alphas0, alphas1, alphas2, alphas3):
         gb4i.add(1.0, alpha0, alpha1, alpha2, alpha3, scales0, scales1, scales2, scales3)
     result1 = gb4i.get_work(nbasis0, nbasis1, nbasis2, nbasis3)
-    print "reference ", result0
+    print "number ", result1
     assert abs(result1 - result0).max() < 3e-7
 
 
 def test_delta_simple0():
-    check_ralpha_repulsion(
+    check_delta_repulsion(
         np.array([1.]), np.array([1.]),
         np.array([1.]), np.array([1.]),
         np.array([0., 0., 0.]), np.array([0., 0., 0.]),
@@ -4380,6 +4382,94 @@ def test_delta_simple0():
         np.array([1.]),
         0, 0, 0, 0,
         np.array([[[[0.6960409996]]]]))
+#test_delta_simple0()
+
+
+def test_delta_repulsion_0_0_0_0_simple1():
+    check_delta_repulsion(
+        np.array([1.]), np.array([1.]),
+        np.array([1.]), np.array([1.]),
+        np.array([0., 0., 0.]), np.array([1., 1., 1.]),
+        np.array([0., 0., 0.]), np.array([1., 1., 1.]),
+        np.array([1.]),
+        np.array([1.]),
+        np.array([1.]),
+        np.array([1.]),
+        0, 0, 0, 0,
+        np.array([[[[0.03465384]]]]))
+#test_delta_repulsion_0_0_0_0_simple1()
+
+
+def test_delta_repulsion_0_0_0_0_simple2():
+    check_delta_repulsion(
+        np.array([1.]), np.array([1.]),
+        np.array([1.]), np.array([1.]),
+        np.array([0.57092, 0.29608, -0.758]), np.array([-0.70841, 0.22864, 0.79589]),
+        np.array([0.83984, 0.65053, 0.36087]), np.array([-0.62267, -0.83676, -0.75233]),
+        np.array([1.]),
+        np.array([1.]),
+        np.array([1.]),
+        np.array([1.]),
+        0, 0, 0, 0,
+        np.array([[[[0.00456547]]]]))
+#test_delta_repulsion_0_0_0_0_simple2()
+
+
+def test_delta_repulsion_0_0_0_0_simple3():
+    check_delta_repulsion(
+        np.array([0.57283]), np.array([1.74713]),
+        np.array([0.21032]), np.array([1.60538]),
+        np.array([0.82197, 0.73226, -0.98154]), np.array([0.57466, 0.17815, -0.25519]),
+        np.array([0.00425, -0.33757, 0.08556]), np.array([-0.38717, 0.66721, 0.40838]),
+        np.array([1.]),
+        np.array([1.]),
+        np.array([1.]),
+        np.array([1.]),
+        0, 0, 0, 0,
+        np.array([[[[0.06552595]]]]))
+#test_delta_repulsion_0_0_0_0_simple3()
+
+
+def test_delta_repulsion_0_0_0_0_simple4():
+    check_delta_repulsion(
+        np.array([1.35491]), np.array([0.9714]),
+        np.array([1.95585]), np.array([1.77853]),
+        np.array([0.37263, -0.87382, 0.28078]), np.array([-0.08946, -0.52616, 0.69184]),
+        np.array([-0.35128, 0.07017, 0.08193]), np.array([0.14543, -0.29499, -0.09769]),
+        np.array([1.61086]),
+        np.array([1.19397]),
+        np.array([1.8119]),
+        np.array([1.55646]),
+        0, 0, 0, 0,
+        np.array([[[[0.3883875489]]]]))
+#test_delta_repulsion_0_0_0_0_simple4()
+
+
+def test_delta_repulsion_0_0_0_1():
+    sigma = 0.0001
+    c = 1.0 / (np.sqrt(2.0 * np.pi) * sigma)
+    alpha = 1.0 / (2.0 * sigma * sigma)
+    e1 = get_gauss_repulsion(
+        np.array([0.74579, 0.93686, 0.39742]), np.array([1.01349, 1.46072, 0.22295]),
+        np.array([1.90756, 0.52423, 1.35586]), np.array([0.9655, 0.73539, 0.51017]),
+        np.array([0.55177, 0.11232, -0.95152]), np.array([0.79941, 0.80782, 0.02287]),
+        np.array([-0.52471, 0.59124, 0.434]), np.array([0.40758, 0.96818, 0.59852]),
+        np.array([1.38989]),
+        np.array([1.20619]),
+        np.array([1.25917]),
+        np.array([0.70246, 1.69253, 1.5632]),
+        0, 0, 0, 1, c, alpha)
+    check_delta_repulsion(
+        np.array([0.74579, 0.93686, 0.39742]), np.array([1.01349, 1.46072, 0.22295]),
+        np.array([1.90756, 0.52423, 1.35586]), np.array([0.9655, 0.73539, 0.51017]),
+        np.array([0.55177, 0.11232, -0.95152]), np.array([0.79941, 0.80782, 0.02287]),
+        np.array([-0.52471, 0.59124, 0.434]), np.array([0.40758, 0.96818, 0.59852]),
+        np.array([1.38989]),
+        np.array([1.20619]),
+        np.array([1.25917]),
+        np.array([0.70246, 1.69253, 1.5632]),
+        0, 0, 0, 1, e1)
+test_delta_repulsion_0_0_0_1()
 
 
 def check_g09_overlap(fn_fchk):

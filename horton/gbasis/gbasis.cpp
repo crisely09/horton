@@ -282,6 +282,11 @@ void GOBasis::compute_delta_repulsion(double* output) {
   compute_four_index(output, &integral);
 }
 
+void GOBasis::compute_intra_density(double* output, double* u) {
+    GB4RAlphaIntegralLibInt integral = GB4IntraDensIntegralLibInt(get_max_shell_type(), u);
+    compute_four_index(output, &integral);
+}
+
 void GOBasis::compute_grid1_exp(long nfn, double* coeffs, long npoint, double* points,
                                 long norb, long* iorbs, double* output) {
     // The work array contains the basis functions evaluated at the grid point,
