@@ -26,7 +26,11 @@ import numpy as np
 from horton.log import log, timer
 from horton.exceptions import NoSCFConvergence
 from horton.meanfield.convergence import convergence_error_eigen
+from horton.meanfield.scf import *
+from horton.meanfield.scf_oda import *
+from horton.meanfield.occ import FixedOccModel, AufbauOccModel
 from horton.meanfield.utils import get_level_shift
+from slsqp import *
 
 
 __all__ = ['FracOccOptimizer']
@@ -35,7 +39,7 @@ __all__ = ['FracOccOptimizer']
 class FracOccOptimizer(object):
     """A class to optimize orbitals with fractional occupations."""
 
-    def __init__(self, scf_solver=PlainSCFSolver(1e-7), threshold=1e-8):
+    def __init__(self, scf_solver=PlainSCFSolver(1e-7), threshold=1e-8, active_orbs=None):
         """Initialize the optimizer.
 
         Parameters
@@ -46,11 +50,17 @@ class FracOccOptimizer(object):
 
         threshold : float
             The convergence threshold for the wavefunction.
+
+        active_orb: np.ndarray
+            The indices of the active orbitals to be optimized.
         """
         self.scf_solver = scf_solver
         self.threshold = threshold
+        if active_orbs.any():
+            assert isinstance(active_orbs, np.ndarray)
+        self.active_orbs = active_orbs
 
-    def __call__(self, ham, overlap, active_orbs=None, *orbs):
+    def __call__(self, ham, overlap, *orbs):
         """Find a self-consistent set of orbitals.
 
         Parameters
@@ -64,86 +74,176 @@ class FracOccOptimizer(object):
             The initial orbitals. The number of dms must match ham.ndm.
         """
         # Some type checking
+        if self.active_orbs.any():
+            if ham.ndm != len(self.active_orbs):
+                raise TypeError('The number of active orbitals does not match the Hamiltonian.')
         if ham.ndm != len(orbs):
             raise TypeError('The number of initial orbital expansions does not match the Hamiltonian.')
 
         self.ham = ham
         self.overlap = overlap
+        self.nfn = orbs[0].nfn
+        self.nelec = sum([sum(orb.occupations[:]) for orb in orbs])
+        if self.ham.ndm == 1:
+            self.nelec *= 2
         self.get_initial_guess(*orbs)
-        if active_orbs:
-            self.active_orbs = active_orbs
-        else:
+        if not self.active_orbs.any():
             self.active_orbs = self.get_active_orbitals(*orbs)
 
-        if log.do_medium:
-            log('Start Fractional Occupations optimizer. ndm=%i' % ham.ndm)
-            log.hline()
-            log('Iter         Error')
-            log.hline()
+        self.index_first = [int(min(self.active_orbs[i])) for i in xrange(ham.ndm)]
 
-    def get_energy(occs):
+        occs = self.get_active_occs(*orbs)
+        assert len(occs) == self.active_orbs.size
 
-        self.occ_model = FixedOccModel()
+        # Define arguments for optimizer
+        self.orbitals = [orb.copy() for orb in orbs]
+        fn = self.get_energy
+        #print self.get_energy(occs)
+        jac = self.get_gradient
+        error = self.get_error
+        x0 = occs
+        x = np.asarray(x0).flatten()
+        #fn = float(np.asarray(fn(x)))
+        bounds = [(0., 1.)] * len(x0)
+        constraints = ({'type': 'eq', 'fun': self.get_error},)
+        from scipy import optimize as op
+        xfin = fmin_slsqp(fn, x0, bounds=bounds, f_eqcons=self.get_error, fprime=jac)
+        self.set_new_occs(xfin)
+        for i, orb in enumerate(orbs):
+            orb.occupations[:] = self.orbitals[i].occupations
+        self.log()
+        #try:
+        #    fmin_slsqp(fn, x0, jac, bounds=bounds, constraints=constraints)
+        #except Exception as e:
+        #    raise ValueError("Error -- objective function should "
+        #                        +"return a scalar but instead returns "
+        #                        + str(fn) + " for input " + str(x0))
+
+
+    def get_active_occs(self, *orbs):
+        import itertools
+        occs = [list(orb.occupations[self.active_orbs[i]]) for i, orb in enumerate(orbs)]
+        if len(occs) > 1:
+            optoccs = list(itertools.chain(occs[0], occs[1]))
+        elif len(occs) == 1:
+            optoccs = occs[0]
+        else:
+            raise ValueError('Somehow something is wrong with the occupations.')
+        return np.array(optoccs)
+
+    def set_new_occs(self, occs, get=False):
+        '''Set the new occupations in the local orbitals
+
+        Arguments
+        occs: np.ndarray
+            The occupations to be optimized.
+        get: bool
+            Set to True to return the occupations array(s).
+        '''
+        lalpha = len(self.active_orbs[0])
+        if len(occs) > len(self.active_orbs[0]):
+            if self.ham.ndm != 2:
+                raise ValueError("The list of occupations to optimize don't match the given hamiltonian.")
+        new_occupations = []
+        for i in xrange(self.ham.ndm):
+            new_occs = np.zeros(self.nfn)
+            new_occs[:self.index_first[i]] = 1.0
+            new_occs[self.index_first[i] + len(occs):] = 0.0
+            new_occs[self.active_orbs[i]] = occs[lalpha*i:lalpha+(len(occs)*i)]
+            iactives = self.active_orbs[i]
+            self.orbitals[i].occupations[iactives] = occs[lalpha*i:lalpha+(len(occs)*i)]
+            new_occupations.append(new_occs)
+        if get:
+            return new_occupations
+
+    def get_energy(self, occs):
+        # Set the new occupations
+        energy = 0.
+        new_occupations = self.set_new_occs(occs, True)
+        self.occ_model = FixedOccModel(*new_occupations)
+        energy += self.solve_scf(*self.orbitals)
         return energy
 
-    def get_gradient(occs):
+    def get_gradient(self, occs):
+        gradient = np.zeros(len(occs))
+        lalpha = len(self.active_orbs[0])
+        for i in xrange(self.ham.ndm):
+            iactives = self.active_orbs[i]
+            gradient[lalpha*i:lalpha+(len(occs)*i)] = self.orbitals[i].energies[iactives]
         return gradient
 
-    def solve_scf(*orbs):
+    def get_error(self, occs):
+        self.set_new_occs(occs)
+        current_nelec = sum([sum(orb.occupations[:]) for orb in self.orbitals])
+        if self.ham.ndm == 1:
+            current_nelec *= 2
+        error = abs(self.nelec - current_nelec) 
+        return error
+
+    def solve_scf(self, *orbs):
         # Solve SCF
-        if self.scf_solver.kind = 'orb':
+        if self.scf_solver.kind == 'orb':
             self.scf_solver(self.ham, self.overlap, self.occ_model, *orbs)
+            dms = [np.zeros(self.overlap.shape) for i in xrange(self.ham.ndm)]
+            for i, orb in enumerate(orbs):
+                dms[i] = orb.to_dm()
+            self.ham.reset(*dms)
         else:
             dms = [np.zeros(self.overlap.shape) for i in xrange(self.ham.ndm)]
             for i, orb in enumerate(orbs):
                 dms[i] = orb.to_dm()
             self.scf_solver(self.ham, self.overlap, self.occ_model, *dms)
-            ham.reset(*dms)
+            self.ham.reset(*dms)
             focks = [np.zeros(self.overlap.shape) for i in xrange(self.ham.ndm)]
-            ham.compute_fock(*focks)
+            self.ham.compute_fock(*focks)
             for i, orb in enumerate(orbs):
                 orb.from_fock_and_dm(focks[i], dms[i], overlap)
+        energy = self.ham.compute_energy()
+        return energy.copy()
 
 
     def get_initial_guess(self, *orbs):
         """Use ODA SCF to get an initial guess for fractional occupations"""
         focks = [np.zeros(self.overlap.shape) for i in xrange(self.ham.ndm)]
         dms = [np.zeros(self.overlap.shape) for i in xrange(self.ham.ndm)]
-        nelec = 0
+        noccs = []
         for i,orb in enumerate(orbs):
             dms[i] = orb.to_dm()
-            nelec += sum(orb.occupations[:orb.homo_index()])
+            if orb.homo_index != None:
+                noccs.append(sum(orb.occupations[:orb.homo_index+1]))
+            else:
+                noccs.append(0.)
 
         oda = ODASCFSolver(threshold=1e-7)
-        occ_model = AufbauOccModel(nelec)
-        oda(self.ham, self.overlap, occ_model, *dms)
-        ham.reset(*dms)
-        ham.compute_fock(*focks)
+        occ_model = AufbauOccModel(*noccs)
+        #oda(self.ham, self.overlap, occ_model, *dms)
+        try:
+            oda(self.ham, self.overlap, occ_model, *dms)
+        except NoSCFConvergence:
+            log('NoSCFConvergence exception')
+        self.ham.reset(*dms)
+        self.ham.compute_fock(*focks)
         for i, orb in enumerate(orbs):
-            orb.from_fock_and_dm(focks[i], dms[i], overlap)
+            orb.from_fock_and_dm(focks[i], dms[i], self.overlap)
 
     def get_active_orbitals(self, *orbs):
         """Finds orbitals with fractional occupations"""
         actives = []
         for i, orb in enumerate(orbs):
-            orb = dms[i].from_fock_and_dm(focks[i], dms[i], overlap)
-            lumo = orb.lumo_index()
-            tmp = np.where(orb.occupations[:lumo] < 1.)[0]
-            if tmp:
+            homo = orb.homo_index
+            tmp = np.where(orb.occupations[homo:] > 1e-7)[0]
+            if tmp.any():
                 actives.append([j for j in tmp])
             else:
                 raise ValueError("No active orbitals found. You need to specify the active orbitals.")
-        return actives
+        return np.array(actives)
 
     def log(self):
         '''Print headers inside this class'''
-        def new_scipy():
-            log('============================NEW SCIPY=============================')
+        log.blank
+        log('Results from the Occupations Optimization')
+        log.hline()
 
-        def converged():
-            log.hline()
-            log('  CONVERGED INSIDE CYCLE - SCIPY')
-            log.hline()
 
 
 
@@ -151,7 +251,8 @@ class FracOccMSOptimizer(FracOccOptimizer):
     """A class to optimize orbitals with fractional occupations 
     using the Multi-secant Hessian approximation."""
 
-    def __init__(self, maxorbs=5, scf_solver=PlainSCFSolver(1e-7), threshold=1e-8, maxiter=128):
+    def __init__(self, maxorbs=5, scf_solver=PlainSCFSolver(1e-7), threshold=1e-8,
+                 maxiter=128, active_orbitals=None):
         """Initialize the optimizer.
 
         Parameters
@@ -168,7 +269,7 @@ class FracOccMSOptimizer(FracOccOptimizer):
             The convergence threshold for the wavefunction.
         """
         self.maxorbs = maxorbs
-        FracOccOptimizer.__init__(scf_solver, threshold, maxiter)
+        FracOccOptimizer.__init__(scf_solver, threshold, active_orbitals)
 
     def __call__(self, ham, overlap, active_orbs=None, *orbs):
         """Find a self-consistent set of orbitals.
@@ -192,9 +293,7 @@ class FracOccMSOptimizer(FracOccOptimizer):
         self.nfn = orbs[0].nfn
         self.get_initial_guess(ham, overlap, occ_model, *orbs)
         self.set_orbitals(*orbs)
-        if active_orbs:
-            self.active_orbs = active_orbs
-        else:
+        if not self.active_orbs:
             self.active_orbs = self.get_active_orbitals(*orbs)
 
         if len(orbs) > 1:
@@ -208,13 +307,19 @@ class FracOccMSOptimizer(FracOccOptimizer):
             log('Iter         Error')
             log.hline()
         error = 0.0
-        while error > self.threshold or 
+        #while error > self.threshold:
+#
+#            if log.do_medium:
+#                log('%4i  %12.5e' % (counter, error))
 
-            if log.do_medium:
-                log('%4i  %12.5e' % (counter, error))
-
+        counter = 0.
         if log.do_medium:
-            log.blank()
+            log('Start Fractional Occupations optimizer. ndm=%i' % ham.ndm)
+            log.hline()
+            log('Iter         Error')
+            log.hline()
+        if log.do_medium:
+            log('%5i %20.13f' % (counter, energy0))
 
         if not converged:
             raise NoSCFConvergence
@@ -251,6 +356,17 @@ class FracOccMSOptimizer(FracOccOptimizer):
     def get_gradient(self):
         return
 
+    def get_hartree_integrals(self):
+        jindex = None
+        for i,term in enumerate(self.ham.terms):
+            if term.label == 'hartree':
+                jindex = i
+        if jindex:
+            hartree_terms = [np.zeros(self.overlap.shape) for i in xrange(self.ham.ndm)]
+            self.ham.terms[i].add_fock(self.ham.cache, *hartree_terms)
+        else:
+            raise ValueError("Hamiltonian doesn't contain a Hartree term.")
+        return hartree_terms
 
     def compute_quadratic_energy(occs):
         '''Compute the approximate energy for k+1 iteration

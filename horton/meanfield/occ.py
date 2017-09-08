@@ -121,8 +121,8 @@ class AufbauOccModel(OccModel):
                 raise ElectronCountError('The number of orbitals must not be lower than the number of alpha or beta electrons.')
             # It is assumed that the orbitals are sorted from low to high energy.
             if nocc == int(nocc):
-                orb.occupations[:nocc] = 1.0
-                orb.occupations[nocc:] = 0.0
+                orb.occupations[:int(nocc)] = 1.0
+                orb.occupations[int(nocc):] = 0.0
             else:
                 orb.occupations[:int(np.floor(nocc))] = 1.0
                 orb.occupations[int(np.floor(nocc))] = nocc - np.floor(nocc)
