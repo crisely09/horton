@@ -21,7 +21,7 @@
 
 
 from horton import *  # pylint: disable=wildcard-import,unused-wildcard-import
-from customgrid import RMyDiracExchange  # pylint: disable=wildcard-import,unused-wildcard-import
+from horton.meanfield.customgrid import *  # pylint: disable=wildcard-import,unused-wildcard-import
 import numpy as np
 
 
@@ -241,7 +241,7 @@ def test_modifiedexchange_he_avqz0():
 
     # Derive orbitals (coeffs, energies and occupations) from the Fock and density
     # matrices. The energy is also computed to store it in the output file below.
-    mu = 3.0
+    mu = 0.1
     alpha = 1.5 * mu
     import math as m
     c = (27.0 * mu) / (8 * m.sqrt(m.pi))
@@ -250,16 +250,31 @@ def test_modifiedexchange_he_avqz0():
     mol.total_energy = ham.compute_energy()
     ham1 = REffHam([RGridGroup(mol.obasis, grid, [RDiracExchange()])])
     ham2 = REffHam([RGridGroup(mol.obasis, grid, [RModifiedExchange(mu=mu, c=c, alpha=alpha)])])
+    ham3 = REffHam([RGridGroup(mol.obasis, grid, [RShortRangeAExchange(mu=mu, c=c, alpha=alpha)])])
 
     dm_alpha = exp_alpha.to_dm()
     ham1.reset(dm_alpha)
     ham2.reset(dm_alpha)
+    ham3.reset(dm_alpha)
     energy1 = ham1.compute_energy()
     energy2 = ham2.compute_energy()
+    energy3 = ham3.compute_energy()
     op1 = lf.create_two_index()
     op2 = lf.create_two_index()
+    op3 = lf.create_two_index()
     ham1.compute_fock(op1)
     ham2.compute_fock(op2)
+    ham3.compute_fock(op3)
+    op_diff = op1.copy()
+    op_diff.iadd(op2, -1)
+    opdiff = op_diff.distance_inf(op3)
+    #print "opdiff ", opdiff
+    #print "energy 1 ", energy1
+    #print "energy 2 ", energy2
+    #print "energy 3 ", energy3
+    #print "diff in energies ", energy3 - (energy1 - energy2)
+test_modifiedexchange_he_avqz0()
+
 
 
 def test_modifiedexchange_he_avqz():
