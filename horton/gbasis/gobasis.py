@@ -320,6 +320,7 @@ go_basis_families_list = [
     GOBasisFamily('def2-qzvpd', filename=context.get_fn('basis/def2-qzvpd.nwchem')),
     GOBasisFamily('ANO-RCC', filename=context.get_fn('basis/ano-rcc.nwchem')),
     GOBasisFamily('ADZP', filename=context.get_fn('basis/adzp.nwchem')),
+    GOBasisFamily('6ZP', filename=context.get_fn('basis/6zp.nwchem')),
 ]
 go_basis_families = dict((bf.name.lower(), bf) for bf in go_basis_families_list)
 

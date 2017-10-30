@@ -428,7 +428,7 @@ class ModifiedCorrelation(GridObservable):
             ectmp = self.interpolant(rs)
             weird = np.where(ectmp > 0.0)
             if weird[0]:
-                #print "============= WARNING!! Rs TOO LARGE =============="
+                log("============= WARNING!! Rs TOO LARGE ==============")
             ec[which] = compute_exp(ectmp)
         return ec
 
