@@ -526,6 +526,56 @@ class GB4GaussIntegralLibInt : public GB4IntegralLibInt {
 
 
 /** @brief
+        A Gaussian type electron repulsion four-center integrals.
+
+    The potential is c exp(-alpha r^2) r^2.
+  */
+class GB4GaussR2IntegralLibInt : public GB4IntegralLibInt {
+ public:
+  /** @brief
+          Initialize a GB4GaussR2IntegralLibInt object.
+
+      @param max_shell_type
+          Highest angular momentum index to be expected in the reset method.
+
+      @param c
+          Coefficient of the gaussian.
+
+      @param alpha
+          Exponential parameter of the gaussian.
+    */
+  GB4GaussR2IntegralLibInt(long max_shell_type, double c, double alpha)
+      : GB4IntegralLibInt(max_shell_type), c(c), alpha(alpha) {}
+
+  /** @brief
+          Evaluate the Laplace transform of the Gaussian potential.
+
+          See Ahlrichs' paper for details. This type of potential is used in the papers
+          of P.M.W Gill et al. and J. Toulouse et al.:
+
+          Gill, P. M. W., & Adamson, R. D. (1996). A family of attenuated Coulomb
+          operators. Chem. Phys. Lett., 261(1-2), 105–110.
+          http://doi.org/10.1016/0009-2614(96)00931-1
+
+          Toulouse, J., Colonna, F., & Savin, A. (2004). Long-range-short-range separation
+          of the electron-electron interaction in density-functional theory. Phys. Rev. A,
+          70, 62505. http://doi.org/10.1103/PhysRevA.70.062505
+
+      See base class for more details.
+    */
+  virtual void laplace_of_potential(double prefac, double rho, double t, long mmax,
+                                    double* output);
+
+  const double get_c() const {return c;}  //!< Coefficient of the gaussian.
+  const double get_alpha() const {return alpha;}  //!< Exponential parameter of the gaussian.
+
+ private:
+  double c;  //!< Coefficient of the gaussian.
+  double alpha;  //!< Exponential parameter of the gaussian.
+};
+
+
+/** @brief
         Gaussian electron repulsion four-center integrals.
 
     The potential is r^alpha.

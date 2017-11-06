@@ -190,6 +190,20 @@ class GOBasis : public GBasis {
         void compute_gauss_repulsion(double* output, double c, double alpha);
 
         /** @brief
+                Computes a Gaussian type electron repulsion integrals times r^2.
+
+            @param output
+                The output array with the integrals.
+
+            @param c
+                Coefficient of the gaussian.
+
+            @param alpha
+                Exponential parameter of the gaussian.
+         */
+        void compute_gaussr2_repulsion(double* output, double c, double alpha);
+
+        /** @brief
                 Computes the r^alpha electron repulsion integrals.
 
             @param output
