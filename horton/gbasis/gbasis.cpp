@@ -250,16 +250,6 @@ void GOBasis::compute_gauss_attraction(double* charges, double* centers, long nc
     compute_two_index(output, &integral);
 }
 
-void GOBasis::compute_erf_attraction(double* charges, double* centers, long ncharge, double* output, double mu) {
-    GB2ErfAttractionIntegral integral = GB2ErfAttractionIntegral(get_max_shell_type(), charges, centers, ncharge, mu);
-    compute_two_index(output, &integral);
-}
-
-void GOBasis::compute_gauss_attraction(double* charges, double* centers, long ncharge, double* output, double c, double alpha) {
-    GB2GaussAttractionIntegral integral = GB2GaussAttractionIntegral(get_max_shell_type(), charges, centers, ncharge, c, alpha);
-    compute_two_index(output, &integral);
-}
-
 void GOBasis::compute_multipole_moment(long* xyz, double* center, double* output) {
     GB2MomentIntegral integral = GB2MomentIntegral(get_max_shell_type(), xyz, center);
     compute_two_index(output, &integral);
@@ -282,7 +272,7 @@ void GOBasis::compute_gauss_repulsion(double* output, double c, double alpha) {
 }
 
 void GOBasis::compute_gaussr2_repulsion(double* output, double c, double alpha) {
-    GB4GaussR2IntegralLibInt integral = GB4GaussR2IntegralLibInt(get_max_shell_type(), c, alpha);
+    GB4GaussIntegralLibInt integral = GB4GaussR2IntegralLibInt(get_max_shell_type(), c, alpha);
     compute_four_index(output, &integral);
 }
 

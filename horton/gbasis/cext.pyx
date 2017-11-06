@@ -67,7 +67,7 @@ __all__ = [
     'GB2NuclearAttractionIntegral','GB4Integral',
     'GB4ElectronRepulsionIntegralLibInt',
     'GB4ErfIntegralLibInt', 'GB4GaussIntegralLibInt',
-    'GB4GaussR2IntegralLibInt','GB4RAlphaIntegralLibInt',
+    'GB4RAlphaIntegralLibInt',
     # fns
     'GB1DMGridDensityFn', 'GB1DMGridGradientFn', 'GB1DMGridGGAFn',
     'GB1DMGridKineticFn', 'GB1DMGridHessianFn', 'GB1DMGridMGGAFn',
@@ -929,7 +929,8 @@ cdef class GOBasis(GBasis):
         (<gbasis.GOBasis*>self._this).compute_gauss_repulsion(&output[0, 0, 0, 0], c, alpha)
         return np.asarray(output)
 
-    def compute_gaussr2_repulsion(self, output, double c=1.0, double alpha=1.0):
+    def compute_gaussr2_repulsion(self, double c=1.0, double alpha=1.0,
+                                double[:, :, :, ::1] output=None):
         r"""Compute gaussian repulsion four-center integrals.
 
         The potential has the following form:
@@ -939,15 +940,12 @@ cdef class GOBasis(GBasis):
 
         Parameters
         ----------
-        output : FourIndex
-            When a ``DenseFourIndex`` object is given, it is used as output argument and
-            its contents are overwritten. When a ``DenseLinalgFactory`` or
-            ``CholeskyLinalgFactory`` is given, it is used to construct the four-index
-            object in which the integrals are stored.
         c : float
             Coefficient of the gaussian.
         alpha : float
             Exponential parameter of the gaussian.
+        output
+            A Four-index object, optional.
 
         Returns
         -------
@@ -963,23 +961,11 @@ cdef class GOBasis(GBasis):
                  'four-center integrals with a Gaussian interaction potential.')
         biblio.cite('toulouse2004',
                  'four-center integrals with a Gaussian interaction potential.')
-        if isinstance(output, CholeskyLinalgFactory):
-            lf = output
-            output = compute_cholesky(self, GB4GaussIntegralLibInt(self.max_shell_type, c, alpha), lf=lf)
-            return output
-        # prepare the output array
-        cdef np.ndarray[double, ndim=4] output_array
-        if isinstance(output, LinalgFactory):
-            lf = output
-            output = lf.create_four_index(self.nbasis)
-        output_array = output._array
-        self.check_matrix_four_index(output_array)
-        # call the low-level routine
-        (<gbasis.GOBasis*>self._this).compute_gauss_repulsion(&output_array[0, 0, 0, 0], c, alpha)
-        # done
-        return output
+        output = prepare_array(output, (self.nbasis, self.nbasis, self.nbasis, self.nbasis), 'output')
+        (<gbasis.GOBasis*>self._this).compute_gaussr2_repulsion(&output[0, 0, 0, 0], c, alpha)
+        return np.asarray(output)
 
-    def compute_ralpha_repulsion(self, output, double alpha=-1.0):
+    def compute_ralpha_repulsion(self, double alpha=-1.0, double[:, :, :, ::1] output=None):
         r"""Compute r^alpha repulsion four-center integrals.
 
         The potential has the following form:
@@ -1890,59 +1876,6 @@ cdef class GB2NuclearAttractionIntegral(GB2Integral):
         self._this = <ints.GB2Integral*>(new ints.GB2NuclearAttractionIntegral(
            max_nbasis, &charges[0], &centers[0, 0], ncharge
         ))
-
-
-cdef class GB2ErfAttractionIntegral(GB2Integral):
-    '''Wrapper for ints.GB2ErfAttractionIntegral, for testing only'''
-    # make an additional reference to these arguments to avoid deallocation
-    cdef np.ndarray _charges
-    cdef np.ndarray _centers
-
-    def __cinit__(self, long max_nbasis,
-                  np.ndarray[double, ndim=1] charges not None,
-                  np.ndarray[double, ndim=2] centers not None, double mu):
-        assert charges.flags['C_CONTIGUOUS']
-        cdef long ncharge = charges.shape[0]
-        assert centers.flags['C_CONTIGUOUS']
-        assert centers.shape[0] == ncharge
-        self._charges = charges
-        self._centers = centers
-        self._this = <ints.GB2Integral*>(new ints.GB2ErfAttractionIntegral(
-            max_nbasis, &charges[0], &centers[0, 0], ncharge, mu
-        ))
-
-    property mu:
-        def __get__(self):
-            return (<ints.GB2ErfAttractionIntegral*>self._this).get_mu()
-
-
-cdef class GB2GaussAttractionIntegral(GB2Integral):
-    '''Wrapper for ints.GB2GaussAttractionIntegral, for testing only'''
-    # make an additional reference to these arguments to avoid deallocation
-    cdef np.ndarray _charges
-    cdef np.ndarray _centers
-
-    def __cinit__(self, long max_nbasis,
-                  np.ndarray[double, ndim=1] charges not None,
-                  np.ndarray[double, ndim=2] centers not None, double c,
-                  double alpha):
-        assert charges.flags['C_CONTIGUOUS']
-        cdef long ncharge = charges.shape[0]
-        assert centers.flags['C_CONTIGUOUS']
-        assert centers.shape[0] == ncharge
-        self._charges = charges
-        self._centers = centers
-        self._this = <ints.GB2Integral*>(new ints.GB2GaussAttractionIntegral(
-            max_nbasis, &charges[0], &centers[0, 0], ncharge, c, alpha
-        ))
-
-    property c:
-        def __get__(self):
-            return (<ints.GB2GaussAttractionIntegral*>self._this).get_c()
-
-    property alpha:
-        def __get__(self):
-            return (<ints.GB2GaussAttractionIntegral*>self._this).get_alpha()
 
 
 cdef class GB2ErfAttractionIntegral(GB2Integral):
