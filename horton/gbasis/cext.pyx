@@ -67,7 +67,7 @@ __all__ = [
     'GB2NuclearAttractionIntegral','GB4Integral',
     'GB4ElectronRepulsionIntegralLibInt',
     'GB4ErfIntegralLibInt', 'GB4GaussIntegralLibInt',
-    'GB4RAlphaIntegralLibInt',
+    'GB4GaussR2IntegralLibInt','GB4RAlphaIntegralLibInt',
     # fns
     'GB1DMGridDensityFn', 'GB1DMGridGradientFn', 'GB1DMGridGGAFn',
     'GB1DMGridKineticFn', 'GB1DMGridHessianFn', 'GB1DMGridMGGAFn',
@@ -929,7 +929,57 @@ cdef class GOBasis(GBasis):
         (<gbasis.GOBasis*>self._this).compute_gauss_repulsion(&output[0, 0, 0, 0], c, alpha)
         return np.asarray(output)
 
-    def compute_ralpha_repulsion(self, double alpha=-1.0, double[:, :, :, ::1] output=None):
+    def compute_gaussr2_repulsion(self, output, double c=1.0, double alpha=1.0):
+        r"""Compute gaussian repulsion four-center integrals.
+
+        The potential has the following form:
+
+        .. math::
+            v = c \exp(-\alpha r^2) r^2
+
+        Parameters
+        ----------
+        output : FourIndex
+            When a ``DenseFourIndex`` object is given, it is used as output argument and
+            its contents are overwritten. When a ``DenseLinalgFactory`` or
+            ``CholeskyLinalgFactory`` is given, it is used to construct the four-index
+            object in which the integrals are stored.
+        c : float
+            Coefficient of the gaussian.
+        alpha : float
+            Exponential parameter of the gaussian.
+
+        Returns
+        -------
+        output
+
+        Keywords: :index:`ERI`, :index:`four-center integrals`
+        """
+        biblio.cite('valeev2014',
+                 'the efficient implementation of four-center electron repulsion integrals')
+        biblio.cite('ahlrichs2006',
+                 'the methodology to implement various types of four-center integrals.')
+        biblio.cite('gill1996',
+                 'four-center integrals with a Gaussian interaction potential.')
+        biblio.cite('toulouse2004',
+                 'four-center integrals with a Gaussian interaction potential.')
+        if isinstance(output, CholeskyLinalgFactory):
+            lf = output
+            output = compute_cholesky(self, GB4GaussIntegralLibInt(self.max_shell_type, c, alpha), lf=lf)
+            return output
+        # prepare the output array
+        cdef np.ndarray[double, ndim=4] output_array
+        if isinstance(output, LinalgFactory):
+            lf = output
+            output = lf.create_four_index(self.nbasis)
+        output_array = output._array
+        self.check_matrix_four_index(output_array)
+        # call the low-level routine
+        (<gbasis.GOBasis*>self._this).compute_gauss_repulsion(&output_array[0, 0, 0, 0], c, alpha)
+        # done
+        return output
+
+    def compute_ralpha_repulsion(self, output, double alpha=-1.0):
         r"""Compute r^alpha repulsion four-center integrals.
 
         The potential has the following form:
@@ -2061,6 +2111,21 @@ cdef class GB4GaussIntegralLibInt(GB4Integral):
     property alpha:
         def __get__(self):
             return (<ints.GB4GaussIntegralLibInt*>self._this).get_alpha()
+
+
+cdef class GB4GaussR2IntegralLibInt(GB4Integral):
+    '''Wrapper for ints.GB4GaussR2IntegralLibInt, for testing only'''
+
+    def __cinit__(self, long max_nbasis, double c, double alpha):
+        self._this = <ints.GB4Integral*>(new ints.GB4GaussR2IntegralLibInt(max_nbasis, c, alpha))
+
+    property c:
+        def __get__(self):
+            return (<ints.GB4GaussR2IntegralLibInt*>self._this).get_c()
+
+    property alpha:
+        def __get__(self):
+            return (<ints.GB4GaussR2IntegralLibInt*>self._this).get_alpha()
 
 
 cdef class GB4RAlphaIntegralLibInt(GB4Integral):

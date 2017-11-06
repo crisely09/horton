@@ -80,6 +80,11 @@ cdef extern from "horton/gbasis/ints.h":
         double get_c()
         double get_alpha()
 
+    cdef cppclass GB4GaussR2IntegralLibInt:
+        GB4GaussR2IntegralLibInt(long max_shell_type, double c, double alpha) except +
+        double get_c()
+        double get_alpha()
+
     cdef cppclass GB4RAlphaIntegralLibInt:
         GB4RAlphaIntegralLibInt(long max_shell_type, double alpha) except +
         double get_alpha()
