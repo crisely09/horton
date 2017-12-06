@@ -5423,6 +5423,157 @@ def test_ralpha_repulsion_4_3_2_1():
         result0, -1.0)
 
 
+
+def check_gaussr2_repulsion(alphas0, alphas1, alphas2, alphas3, r0, r1, r2, r3, scales0,
+                           scales1, scales2, scales3, shell_type0, shell_type1,
+                           shell_type2, shell_type3, result0, c, alpha):
+    """Compare output from HORTON Erf integrals with reference data.
+
+    The reference data was generated with a Mathematica script of Julien Toulouse and
+    Andreas Savin.
+
+    Parameters
+    ----------
+    alpha0, alpha1, alpha2, alpha3 : float
+        Exponents of the four primitive shells.
+    r0, r1, r2, r3 : np.ndarray, shape=(3,), dtype=float
+        Cartesian coordinates of the centers of the four primitive shells.
+    scales0, scales1, scales2, scales3 : float
+        Normalization prefactors for the Gaussian shells.
+    shell_type0, shell_type1, shell_type2, shell_type3 : int
+        Shell types of the four primitive shells.
+    result0 : np.ndarray, shape=(nbasis, nbasis, nbasis, nbasis), dtype=float
+        The expected result.
+    alpha : float
+        The interaction is r to the power alpha.
+    """
+    max_shell_type = 4
+    max_nbasis = get_shell_nbasis(max_shell_type)
+    gb4i = GB4GaussR2IntegralLibInt(max_shell_type, c, alpha)
+    assert gb4i.max_nbasis == max_nbasis
+    assert gb4i.nwork == max_nbasis ** 4
+    assert gb4i.alpha == alpha
+
+    nbasis0 = get_shell_nbasis(shell_type0)
+    nbasis1 = get_shell_nbasis(shell_type1)
+    nbasis2 = get_shell_nbasis(shell_type2)
+    nbasis3 = get_shell_nbasis(shell_type3)
+    assert result0.shape == (nbasis0, nbasis1, nbasis2, nbasis3)
+    # Clear the working memory
+    gb4i.reset(shell_type0, shell_type1, shell_type2, shell_type3, r0, r1, r2, r3)
+    # Add a few cobtributions:
+    for alpha0, alpha1, alpha2, alpha3 in zip(alphas0, alphas1, alphas2, alphas3):
+        gb4i.add(1.0, alpha0, alpha1, alpha2, alpha3, scales0, scales1, scales2, scales3)
+    result1 = gb4i.get_work(nbasis0, nbasis1, nbasis2, nbasis3)
+    assert abs(result1 - result0).max() < 3e-7
+
+
+def check_gaussr2_repulsion_der(alphas0, alphas1, alphas2, alphas3, r0, r1, r2, r3,
+                           scales0, scales1, scales2, scales3, shell_type0,
+                           shell_type1, shell_type2, shell_type3, result0, c, alpha):
+    """Compare output from HORTON GaussR2 integrals with reference data.
+
+    We use the derivative check function from the `RoMin` minimizer.
+
+    Parameters
+    ----------
+    alpha0, alpha1, alpha2, alpha3 : float
+        Exponents of the four primitive shells.
+    r0, r1, r2, r3 : np.ndarray, shape=(3,), dtype=float
+        Cartesian coordinates of the centers of the four primitive shells.
+    scales0, scales1, scales2, scales3 : float
+        Normalization prefactors for the Gaussian shells.
+    shell_type0, shell_type1, shell_type2, shell_type3 : int
+        Shell types of the four primitive shells.
+    result0 : np.ndarray, shape=(nbasis, nbasis, nbasis, nbasis), dtype=float
+        The expected result.
+    alpha : float
+        The interaction is r to the power alpha.
+    """
+    max_shell_type = 4
+    max_nbasis = get_shell_nbasis(max_shell_type)
+    gb4i = GB4GaussR2IntegralLibInt(max_shell_type, c, alpha)
+    assert gb4i.max_nbasis == max_nbasis
+    assert gb4i.nwork == max_nbasis ** 4
+    assert gb4i.alpha == alpha
+
+    nbasis0 = get_shell_nbasis(shell_type0)
+    nbasis1 = get_shell_nbasis(shell_type1)
+    nbasis2 = get_shell_nbasis(shell_type2)
+    nbasis3 = get_shell_nbasis(shell_type3)
+    assert result0.shape == (nbasis0, nbasis1, nbasis2, nbasis3)
+
+
+def test_gaussr2_simple0():
+    check_gaussr2_repulsion(
+        np.array([1.]), np.array([1.]),
+        np.array([1.]), np.array([1.]),
+        np.array([0., 0., 0.]), np.array([0., 0., 0.]),
+        np.array([0., 0., 0.]), np.array([0., 0., 0.]),
+        np.array([1.]),
+        np.array([1.]),
+        np.array([1.]),
+        np.array([1.]),
+        0, 0, 0, 0,
+        np.array([[[[0.58830273]]]]), 1.0, 1.5)
+
+
+def test_gaussr2_simple1():
+    check_gaussr2_repulsion(
+        np.array([1.]), np.array([1.]),
+        np.array([1.]), np.array([1.]),
+        np.array([0., 0., 0.]), np.array([0., 0., 0.]),
+        np.array([0., 0., 0.]), np.array([0., 0., 0.]),
+        np.array([1.]),
+        np.array([1.]),
+        np.array([1.]),
+        np.array([1.]),
+        0, 0, 0, 0,
+        np.array([[[[1.117775199]]]]), 1.9, 1.5)
+
+
+def test_gaussr2_simple2():
+    check_gaussr2_repulsion(
+        np.array([1.]), np.array([1.]),
+        np.array([1.]), np.array([1.]),
+        np.array([0., 0., 0.]), np.array([0., 0., 0.]),
+        np.array([0., 0., 0.]), np.array([0., 0., 0.]),
+        np.array([1.]),
+        np.array([1.]),
+        np.array([1.]),
+        np.array([1.]),
+        0, 0, 0, 0,
+        np.array([[[[0.37630806]]]]), 2.34, 3.2)
+
+
+def test_gaussr2_repulsion_0_0_0_0_simple1():
+    check_gaussr2_repulsion(
+        np.array([1.]), np.array([1.]),
+        np.array([1.]), np.array([1.]),
+        np.array([0., 0., 0.]), np.array([1., 1., 1.]),
+        np.array([0., 0., 0.]), np.array([1., 1., 1.]),
+        np.array([1.]),
+        np.array([1.]),
+        np.array([1.]),
+        np.array([1.]),
+        0, 0, 0, 0,
+        np.array([[[[0.30143010897]]]]), 2.34, 3.2)
+
+
+def test_gaussr2_repulsion_0_0_0_0_simple2():
+    check_gaussr2_repulsion(
+        np.array([1.]), np.array([1.]),
+        np.array([1.]), np.array([1.]),
+        np.array([0.57092, 0.29608, -0.758]), np.array([-0.70841, 0.22864, 0.79589]),
+        np.array([0.83984, 0.65053, 0.36087]), np.array([-0.62267, -0.83676, -0.75233]),
+        np.array([1.]),
+        np.array([1.]),
+        np.array([1.]),
+        np.array([1.]),
+        0, 0, 0, 0,
+        np.array([[[[0.03069102199]]]]), 2.34, 3.2)
+
+
 def check_g09_overlap(fn_fchk):
     fn_log = fn_fchk[:-5] + '.log'
     mol = IOData.from_file(fn_fchk, fn_log)

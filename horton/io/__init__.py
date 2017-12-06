@@ -42,3 +42,4 @@ from horton.io.molpro import *
 from horton.io.vasp import *
 from horton.io.wfn import *
 from horton.io.xyz import *
+from horton.io.ciflow import *

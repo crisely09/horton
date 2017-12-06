@@ -980,12 +980,12 @@ void GB4GaussIntegralLibInt::laplace_of_potential(double prefac, double rho, dou
 void GB4GaussR2IntegralLibInt::laplace_of_potential(double prefac, double rho, double t,
                                                   long mmax, double* output) {
   double afac = alpha/(rho+alpha);
-  double dterm = 0;
-  prefac *= (sqrt(M_PI*M_PI*M_PI)/(rho+alpha))*sqrt(1.0/(rho+alpha))*c*exp(-t*afac);
-  double dtermone = ((t/rho) + ((1.5-(afac*t))/rho+alpha));
+  prefac *= (PI_POW_3_2/(rho+alpha))*sqrt(1.0/(rho+alpha))*c*exp(-t*afac);
+  double dtermone = prefac * ((t/rho) + ((1.5-(afac*t))/(rho+alpha)));
+  double dtermtwo = prefac * ((1/rho) + ((1.5-afac)/(rho+alpha)));
   for (long m=0; m <= mmax; m++) {
-    dterm = m * prefac * ((1/rho) + ((1.5-afac)/rho+alpha));
-    output[m] = (prefac * dtermone) - dterm;
+    dtermtwo *= m/afac;
+    output[m] = dtermone - dtermtwo;
     prefac *= afac;
   }
 }

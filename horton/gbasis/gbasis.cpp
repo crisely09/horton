@@ -272,7 +272,7 @@ void GOBasis::compute_gauss_repulsion(double* output, double c, double alpha) {
 }
 
 void GOBasis::compute_gaussr2_repulsion(double* output, double c, double alpha) {
-    GB4GaussIntegralLibInt integral = GB4GaussR2IntegralLibInt(get_max_shell_type(), c, alpha);
+    GB4GaussR2IntegralLibInt integral = GB4GaussR2IntegralLibInt(get_max_shell_type(), c, alpha);
     compute_four_index(output, &integral);
 }
 

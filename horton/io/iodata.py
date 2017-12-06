@@ -403,6 +403,9 @@ class IOData(object):
         elif 'FCIDUMP' in os.path.basename(filename):
             from horton.io.molpro import dump_fcidump
             dump_fcidump(filename, self)
+        elif '.psi4.dat' in os.path.basename(filename):
+            from horton.io.ciflow import dump_psi4
+            dump_psi4(filename, self)
         else:
             raise ValueError('Unknown file format for writing: %s' % filename)
 
