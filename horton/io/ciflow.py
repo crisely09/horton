@@ -48,15 +48,19 @@ def dump_psi4(filename, data):
     core_energy = getattr(data, 'core_energy', 0.0)
     energy = getattr(data, 'energy', 0.0)
     nelec = getattr(data, 'nelec', 0)
-    if hasattr(data, 'exp_alpha'):
-        nalpha = sum(data.exp_alpha.occupations)
-        if hasattr(data, 'exp_beta'):
-            nbeta = sum(data.exp_beta.occupations)
-        else:
-            nbeta = nalpha
+    if not nelec:
+        nalpha = getattr(data, 'nalpha', 0)
+        nbeta = getattr(data, 'nbeta', 0)
     else:
-        nbeta = nelec/2
-        nalpha = nbeta + (nelec % 2)
+        if hasattr(data, 'exp_alpha'):
+            nalpha = sum(data.exp_alpha.occupations)
+            if hasattr(data, 'exp_beta'):
+                nbeta = sum(data.exp_beta.occupations)
+            else:
+                nbeta = nalpha
+        else:
+            nbeta = nelec/2
+            nalpha = nbeta + (nelec % 2)
 
     with open(filename, 'w') as f:
 

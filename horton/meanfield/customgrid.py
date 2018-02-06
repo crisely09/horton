@@ -27,6 +27,7 @@ from horton.meanfield.gridgroup import GridObservable, DF_LEVEL_LDA
 from horton.grid.molgrid import BeckeMolGrid
 from horton.grid.poisson import solve_poisson_becke
 from horton.utils import doc_inherit
+from horton.context import *
 
 np.set_printoptions(threshold=np.nan)
 
@@ -487,11 +488,13 @@ def compute_interpolant(mu):
     #load and contruct arrays for interpolation
     from scipy.interpolate import CubicSpline
     if abs(mu - 0.0) < 1e-10:
-        egrid = np.load("coulomb_grids.npy")
+        coulombfn = context.get_fn('test/coulomb_grids.npy')
+        egrid = np.load(coulombfn)
         x = egrid[:,0]
         y = egrid[:,1]
     else:
-        egrid = np.load('sr_grids.npy')
+        srcfn = context.get_fn('test/sr_grids.npy')
+        egrid = np.load(srcfn)
         mus = np.where(abs(egrid[:,1] - mu) < 1e-10)
         x = np.squeeze(egrid[mus,0])
         y = np.squeeze(egrid[mus,2])
