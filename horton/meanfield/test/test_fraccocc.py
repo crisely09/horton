@@ -40,7 +40,7 @@ def test_energy_hydrogen():
     ]
     external = {'nn': compute_nucnuc(mol.coordinates, mol.pseudo_numbers)}
     ham = UEffHam(terms, external)
-    fracocc = FracOccOptimizer(active_orbs=[0])
+    fracocc = FracOccSimpleOptimizer(active_orbs=[0])
     fracocc(ham, olp, mol.orb_alpha, mol.orb_beta)
 
 #test_energy_hydrogen()
@@ -78,7 +78,7 @@ def test_carbon_restricted():
     ham.compute_fock(fock_alpha)
     mol.orb_alpha.from_fock_and_dm(fock_alpha, dm_alpha, olp)
     print 'alpha', mol.orb_alpha.occupations
-    fracocc = FracOccOptimizer(active_orbs=np.array([[2,3,4]]))
+    fracocc = FracOccSimpleOptimizer(active_orbs=np.array([[2,3,4]]))
     fracocc(ham, olp, mol.orb_alpha)
 
 test_carbon_restricted()
@@ -122,11 +122,183 @@ def test_carbon():
     mol.orb_beta.from_fock_and_dm(fock_beta, dm_beta, olp)
     print 'alpha', mol.orb_alpha.occupations
     print 'beta', mol.orb_beta.occupations
-    fracocc = FracOccOptimizer(active_orbs=np.array([[2,3,4],[2,3,4]]))
+    fracocc = FracOccSimpleOptimizer(active_orbs=np.array([[1,2,3],[1,2,3]]))
     fracocc(ham, olp, mol.orb_alpha, mol.orb_beta)
     print 'final occs ', mol.orb_alpha.occupations
 
-test_carbon()
+#test_carbon()
+
+
+def test_carbon_ms_restricted():
+    coordinates = np.array([[0., 0., 0.]])
+    numbers = np.array([6])
+    obasis = get_gobasis(coordinates, numbers, '3-21g')
+    mol = IOData(numbers=numbers, coordinates=coordinates, obasis=obasis)
+    kin = mol.obasis.compute_kinetic()
+    na = mol.obasis.compute_nuclear_attraction(mol.coordinates, mol.pseudo_numbers)
+    er = mol.obasis.compute_electron_repulsion()
+    olp = mol.obasis.compute_overlap()
+    # Create alpha orbitals
+    mol.orb_alpha = Orbitals(obasis.nbasis)
+    one = kin + na
+    guess_core_hamiltonian(olp, one, mol.orb_alpha)
+    terms = [
+        RTwoIndexTerm(kin, 'kin'),
+        RDirectTerm(er, 'hartree'),
+        RExchangeTerm(er, 'x_hf'),
+        RTwoIndexTerm(na, 'ne'),
+    ]
+    external = {'nn': compute_nucnuc(mol.coordinates, mol.pseudo_numbers)}
+    ham = REffHam(terms, external)
+    # Decide how to occupy the orbitals (5 alpha electrons)
+    occ_model = AufbauOccModel(3)
+
+    scf_solver = ODASCFSolver(1e-7)
+    occ_model.assign(mol.orb_alpha)
+    dm_alpha = mol.orb_alpha.to_dm()
+    scf_solver(ham, olp, occ_model, dm_alpha)
+    ham.reset(dm_alpha)
+    fock_alpha = np.zeros(dm_alpha.shape)
+    ham.compute_fock(fock_alpha)
+    mol.orb_alpha.from_fock_and_dm(fock_alpha, dm_alpha, olp)
+    fracocc = FracOccMSOptimizer(er, active_orbs=np.array([[2,3,4]]))
+    hartree_matrix = fracocc.get_hartree_integrals(mol.orb_alpha)
+    print "hartree matrix ", hartree_matrix
+    jm = four_index_transform(er, mol.orb_alpha)
+
+    actives = [2, 3, 4]
+    hartree_terms = np.array([jm[i, j, i, j] for i in actives for j in actives])
+    hartree_matrix = np.reshape(np.stack(hartree_matrix), (9,))
+    assert abs(hartree_terms - hartree_matrix).all() < 1e-6
+
+#test_carbon_ms_restricted()
+
+def test_carbon_ms_hartree_unrestricted1():
+    coordinates = np.array([[0., 0., 0.]])
+    numbers = np.array([6])
+    obasis = get_gobasis(coordinates, numbers, '3-21g')
+    mol = IOData(numbers=numbers, coordinates=coordinates, obasis=obasis)
+    kin = mol.obasis.compute_kinetic()
+    na = mol.obasis.compute_nuclear_attraction(mol.coordinates, mol.pseudo_numbers)
+    er = mol.obasis.compute_electron_repulsion()
+    olp = mol.obasis.compute_overlap()
+    # Create alpha orbitals
+    mol.orb_alpha = Orbitals(obasis.nbasis)
+    mol.orb_beta = Orbitals(obasis.nbasis)
+    one = kin + na
+    guess_core_hamiltonian(olp, one, mol.orb_alpha, mol.orb_beta)
+    terms = [
+        UTwoIndexTerm(kin, 'kin'),
+        UDirectTerm(er, 'hartree'),
+        UExchangeTerm(er, 'x_hf'),
+        UTwoIndexTerm(na, 'ne'),
+    ]
+    external = {'nn': compute_nucnuc(mol.coordinates, mol.pseudo_numbers)}
+    ham = UEffHam(terms, external)
+    # Decide how to occupy the orbitals (5 alpha electrons)
+    occ_model = AufbauOccModel(3,3)
+
+    scf_solver = ODASCFSolver(1e-7)
+    occ_model.assign(mol.orb_alpha, mol.orb_beta)
+    dm_alpha = mol.orb_alpha.to_dm()
+    dm_beta = mol.orb_beta.to_dm()
+    scf_solver(ham, olp, occ_model, dm_alpha, dm_beta)
+    #scf_solver(ham, olp, occ_model, mol.orb_alpha, mol.orb_beta)
+    ham.reset(dm_alpha, dm_beta)
+    fock_alpha = np.zeros(dm_alpha.shape)
+    fock_beta = np.zeros(dm_beta.shape)
+    ham.compute_fock(fock_alpha, fock_beta)
+    mol.orb_alpha.from_fock_and_dm(fock_alpha, dm_alpha, olp)
+    mol.orb_beta.from_fock_and_dm(fock_beta, dm_beta, olp)
+    fracocc = FracOccMSOptimizer(er, active_orbs=np.array([[2,3,4], [2,3,4]]))
+    hartree_matrix = fracocc.get_hartree_integrals(mol.orb_alpha, mol.orb_beta)
+    print "hartree matrix ", hartree_matrix
+    jm = four_index_transform(er, mol.orb_alpha, mol.orb_beta)
+
+    actives = [2, 3, 4]
+    hartree_terms = np.array([jm[i, j, i, j] for i in actives for j in actives] * 4)
+    hartree_matrix = np.reshape(np.stack(hartree_matrix), (36,))
+    assert (hartree_terms - hartree_matrix).all() < 1e-6
+
+#test_carbon_ms_hartree_unrestricted1()
+
+def test_carbon_ms_hartree_unrestricted2():
+    coordinates = np.array([[0., 0., 0.]])
+    numbers = np.array([6])
+    obasis = get_gobasis(coordinates, numbers, '3-21g')
+    mol = IOData(numbers=numbers, coordinates=coordinates, obasis=obasis)
+    kin = mol.obasis.compute_kinetic()
+    na = mol.obasis.compute_nuclear_attraction(mol.coordinates, mol.pseudo_numbers)
+    er = mol.obasis.compute_electron_repulsion()
+    olp = mol.obasis.compute_overlap()
+    # Create alpha orbitals
+    mol.orb_alpha = Orbitals(obasis.nbasis)
+    mol.orb_beta = Orbitals(obasis.nbasis)
+    one = kin + na
+    guess_core_hamiltonian(olp, one, mol.orb_alpha, mol.orb_beta)
+    terms = [
+        UTwoIndexTerm(kin, 'kin'),
+        UDirectTerm(er, 'hartree'),
+        UExchangeTerm(er, 'x_hf'),
+        UTwoIndexTerm(na, 'ne'),
+    ]
+    external = {'nn': compute_nucnuc(mol.coordinates, mol.pseudo_numbers)}
+    ham = UEffHam(terms, external)
+    # Decide how to occupy the orbitals (5 alpha electrons)
+    occ_model = AufbauOccModel(4,2)
+
+    scf_solver = ODASCFSolver(1e-7)
+    occ_model.assign(mol.orb_alpha, mol.orb_beta)
+    dm_alpha = mol.orb_alpha.to_dm()
+    dm_beta = mol.orb_beta.to_dm()
+    scf_solver(ham, olp, occ_model, dm_alpha, dm_beta)
+    #scf_solver(ham, olp, occ_model, mol.orb_alpha, mol.orb_beta)
+    ham.reset(dm_alpha, dm_beta)
+    fock_alpha = np.zeros(dm_alpha.shape)
+    fock_beta = np.zeros(dm_beta.shape)
+    ham.compute_fock(fock_alpha, fock_beta)
+    mol.orb_alpha.from_fock_and_dm(fock_alpha, dm_alpha, olp)
+    mol.orb_beta.from_fock_and_dm(fock_beta, dm_beta, olp)
+    fracocc = FracOccMSOptimizer(er, active_orbs=np.array([[1, 2, 3], [0, 1]]))
+    hartree_integrals = []
+    orbs = [mol.orb_alpha, mol.orb_beta]
+    for i, orb in enumerate(orbs):
+        for orb1 in orbs[i:]:
+            hartree_integrals.append(four_index_transform(er, orb, orb1, orb, orb1))
+
+    hartree_matrix = fracocc.get_hartree_integrals(mol.orb_alpha, mol.orb_beta)
+    actives_alpha = [1, 2, 3]
+    actives_beta = [0, 1]
+    total = len(actives_alpha) + len(actives_beta)
+    result0 = np.zeros((total, total))
+    hartree_terms = []
+    jm0 = hartree_integrals[0]
+    jm1 = hartree_integrals[1]
+    jm2 = hartree_integrals[2]
+    # alphas
+    hartree_terms.append([jm0[i, j, i, j] for i in actives_alpha for j in actives_alpha])
+    for i, a in enumerate(actives_alpha):
+        for j, b in enumerate(actives_alpha):
+            result0[i, j] = jm0[a, b, a, b]
+    # alpha- beta
+    hartree_terms.append([jm1[i, j, i, j] for i in actives_alpha for j in actives_beta])
+    for i, a in enumerate(actives_alpha):
+        for j, b in enumerate(actives_beta):
+            result0[i, len(actives_alpha)+j] = jm1[a, b, a, b]
+    # beta - alpha
+    hartree_terms.append([jm1[i, j, i, j] for i in actives_beta for j in actives_alpha])
+    for i, a in enumerate(actives_beta):
+        for j, b in enumerate(actives_alpha):
+            result0[len(actives_alpha)+i, j] = jm1[a, b, a, b]
+    # betas
+    hartree_terms.append([jm2[i, j, i, j] for i in actives_beta for j in actives_beta])
+    for i, a in enumerate(actives_beta):
+        for j, b in enumerate(actives_beta):
+            result0[len(actives_alpha)+i, len(actives_alpha)+j] = jm2[a, b, a, b]
+
+    assert (result0 - hartree_matrix).any() < 1e-6
+
+test_carbon_ms_hartree_unrestricted2()
 
 def test_cubic_interpolation_hfs_cs():
     fn_fchk = context.get_fn('test/water_hfs_321g.fchk')
