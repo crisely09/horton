@@ -282,8 +282,8 @@ void GOBasis::compute_delta_repulsion(double* output) {
   compute_four_index(output, &integral);
 }
 
-void GOBasis::compute_intra_density(double* output, double* u) {
-    GB4RAlphaIntegralLibInt integral = GB4IntraDensIntegralLibInt(get_max_shell_type(), u);
+void GOBasis::compute_intra_density(double* output, double* point) {
+    GB4IntraDensIntegralLibInt integral = GB4IntraDensIntegralLibInt(get_max_shell_type(), point);
     compute_four_index(output, &integral);
 }
 

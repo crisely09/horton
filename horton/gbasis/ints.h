@@ -763,7 +763,7 @@ class GB4IntraDensIntegralLibInt : public GB4DensIntegralLibInt {
           Highest angular momentum index to be expected in the reset method.
     */
   explicit GB4IntraDensIntegralLibInt(long max_shell_type)
-      : GB4DensIntegralLibInt(max_shell_type), u(u) {}
+      : GB4DensIntegralLibInt(max_shell_type), point(point) {}
 
   /** @brief
           Evaluate the Laplace transform of the ordinary Coulomb potential.
@@ -775,9 +775,7 @@ class GB4IntraDensIntegralLibInt : public GB4DensIntegralLibInt {
   virtual void laplace_of_potential(double prefac, double rho, double t, double* p,
                                     double* q, long mmax, double* output) = 0;
 
-  const double get_u() const {return u;} //!< Return the intracular coordinate u.
-
  private:
-  double* u; //!< Intracular coordinates
+  double* point;    //!< Array with values of the nuclear charges.
 };
 #endif

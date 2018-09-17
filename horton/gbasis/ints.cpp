@@ -1454,9 +1454,9 @@ void GB4IntraDensIntegralLibInt::laplace_of_potential(double prefac, double rho,
                                                    long mmax, double* output) {
   for (long m=0; m <= mmax; m++) {
     double afac = 0;
-    afac += u[0]**2 + u[1]**2 + u[2]**2;
-    afac -= 2*u[0]*p[0] + 2*u[1]*p[1] + 2*u[2]*p[2]
-    afac += 2*u[0]*q[0] + 2*u[1]*q[1] + 2*u[2]*q[2]
+    afac += point[0]**2 + point[1]**2 + point[2]**2;
+    afac -= 2*point[0]*p[0] + 2*point[1]*p[1] + 2*point[2]*p[2]
+    afac += 2*point[0]*q[0] + 2*point[1]*q[1] + 2*point[2]*q[2]
     afac *= rho
     output[m] = prefac * exp(-t-afac);
   }

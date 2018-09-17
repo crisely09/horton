@@ -88,7 +88,7 @@ cdef extern from "horton/gbasis/ints.h":
         GB4DeltaIntegralLibInt(long max_shell_type) except +
 
     cdef cppclass GB4IntraDensIntegralLibInt:
-        GB4IntraDensIntegralLibInt(long max_shell_type, double* u) except +
+        GB4IntraDensIntegralLibInt(long max_shell_type, double* point) except +
 
 
 cdef extern from "libint2.h":

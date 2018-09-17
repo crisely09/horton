@@ -987,7 +987,7 @@ cdef class GOBasis(GBasis):
         return np.asarray(output)
 
     def compute_intra_density(self, double[:, :, :, ::1] output=None,
-                              double[:, ::1] u not None):
+                              double[:, ::1] point=None):
         r'''Compute electron-electron repulsion integrals.
 
         The potential has the following form:
@@ -999,7 +999,7 @@ cdef class GOBasis(GBasis):
         ----------
         output
             A Four-index object, optional.
-        u
+        point
             The intracular coordinate.
 
         Returns
@@ -1010,8 +1010,11 @@ cdef class GOBasis(GBasis):
         '''
         biblio.cite('valeev2014',
                     'the efficient implementation of four-center electron repulsion integrals')
+        check_shape(point, (-1, 3), 'coordinates')
+        if point is None:
+            point = np.zeros((-1, 3))
         output = prepare_array(output, (self.nbasis, self.nbasis, self.nbasis, self.nbasis), 'output')
-        (<gbasis.GOBasis*>self._this).compute_intra_density(&output[0, 0, 0, 0], &u[0, 0])
+        (<gbasis.GOBasis*>self._this).compute_intra_density(&output[0, 0, 0, 0], &point[0, 0])
         return np.asarray(output)
 
     def _compute_cholesky(self, GB4Integral gb4int, double threshold=1e-8):
@@ -2085,12 +2088,10 @@ cdef class GB4DeltaIntegralLibInt(GB4Integral):
 cdef class GB4IntraDensIntegralLibInt(GB4Integral):
     '''Wrapper for ints.GB4IntraDensIntegralLibInt, for testing only'''
 
-    def __cinit__(self, long max_nbasis, double mu):
-        self._this = <ints.GB4Integral*>(new ints.GB4IntraDensIntegralLibInt(max_nbasis, u))
-
-    property mu:
-        def __get__(self):
-            return (<ints.GB4IntraDensIntegralLibInt*>self._this).get_u()
+    def __cinit__(self, long max_nbasis, np.ndarray[double, ndim=2] point not None):
+        assert point.flags['C_CONTIGUOUS']
+        self._point = point
+        self._this = <ints.GB4Integral*>(new ints.GB4IntraDensIntegralLibInt(max_nbasis, &point[0, 0]))
 
 
 #

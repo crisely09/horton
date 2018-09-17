@@ -217,10 +217,10 @@ class GOBasis : public GBasis {
             @param output
                 The output array with the integrals.
 
-            @param u
+            @param point
                 The intracular coordinate.
          */
-        void compute_intra_density(double* output, double* u);
+        void compute_intra_density(double* output, double* point);
 
         /** @brief
                 Computes the (multipole) moment integrals.
