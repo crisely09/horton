@@ -944,9 +944,63 @@ end_boys:
 }
 
 
+void GB4ElectronRepulsionIntegralLibInt::laplace_of_potential(
+    double prefac, double rho, double t, long mmax, double* output) {
+  boys_function_array(mmax, t, output);
+  prefac *= 2.0*M_PI/rho;
+  for (long m=0; m <= mmax; m++) {
+    output[m] *= prefac;
+  }
+}
+
+
+void GB4ErfIntegralLibInt::laplace_of_potential(
+    double prefac, double rho, double t, long mmax, double* output) {
+  double efac = mu*mu/(mu*mu + rho);
+  boys_function_array(mmax, t*efac, output);
+  prefac *= 2.0*M_PI/rho*sqrt(efac);
+  for (long m=0; m <= mmax; m++) {
+    output[m] *= prefac;
+    prefac *= efac;
+  }
+}
+
+
+void GB4GaussIntegralLibInt::laplace_of_potential(double prefac, double rho, double t,
+                                                  long mmax, double* output) {
+  double afac = alpha/(rho+alpha);
+  prefac *= (sqrt(M_PI*M_PI*M_PI)/(rho+alpha))*sqrt(1.0/(rho+alpha))*c*exp(-t*afac);
+  for (long m=0; m <= mmax; m++) {
+    output[m] = prefac;
+    prefac *= afac;
+  }
+}
+
+
+void GB4RAlphaIntegralLibInt::laplace_of_potential(double prefac, double rho, double t,
+                                                   long mmax, double* output) {
+  if (mmax > 10)
+    throw std::domain_error("mmax > 10, highest cartesian angular value implemented is 10");
+  prefac *= exp(-t)/(rho*sqrt(rho));
+  double tfactor = ((4.0*M_PI)/(2.0*sqrt(pow(rho, alpha))));
+  for (long m=0; m <= mmax; m++) {
+    output[m] = tfactor*dtaylor(m, alpha, t, prefac);
+  }
+}
+
+
+void GB4DeltaIntegralLibInt::laplace_of_potential(double prefac, double rho, double t,
+                                                   long mmax, double* output) {
+  std::cout << "exp(t) :" << exp(-t) << "\n";
+  for (long m=0; m <= mmax; m++) {
+    output[m] = prefac * exp(-t);
+  }
+}
+
+
 /*
 
-   GB4DensIntegralLibInt
+   GB4DIntegralLibInt
 
 */
 
@@ -962,7 +1016,7 @@ end_boys:
 #error LibInt must be compiled with an angular momentum limit of at least MAX_SHELL_TYPE.
 #endif
 
-GB4DensIntegralLibInt::GB4DensIntegralLibInt(long max_shell_type)
+GB4DIntegralLibInt::GB4DIntegralLibInt(long max_shell_type)
     : GB4Integral(max_shell_type),
       libint_args{{0, NULL, 0.0}, {0, NULL, 0.0}, {0, NULL, 0.0}, {0, NULL, 0.0}},
       order{0, 0, 0, 0}, ab{0.0, 0.0, 0.0}, cd{0.0, 0.0, 0.0}, ab2(0.0), cd2(0.0) {
@@ -970,11 +1024,11 @@ GB4DensIntegralLibInt::GB4DensIntegralLibInt(long max_shell_type)
   erieval.contrdepth = 1;
 }
 
-GB4DensIntegralLibInt::~GB4DensIntegralLibInt() {
+GB4DIntegralLibInt::~GB4DIntegralLibInt() {
   libint2_cleanup_eri(&erieval);
 }
 
-void GB4DensIntegralLibInt::reset(
+void GB4DIntegralLibInt::reset(
     long _shell_type0, long _shell_type1, long _shell_type2, long _shell_type3,
     const double* _r0, const double* _r1, const double* _r2, const double* _r3) {
   GB4Integral::reset(_shell_type0, _shell_type1, _shell_type2, _shell_type3, _r0, _r1, _r2, _r3);
@@ -1068,7 +1122,7 @@ void GB4DensIntegralLibInt::reset(
 }
 
 
-void GB4DensIntegralLibInt::add(
+void GB4DIntegralLibInt::add(
     double coeff, double alpha0, double alpha1, double alpha2, double alpha3,
     const double* scales0, const double* scales1, const double* scales2, const double* scales3) {
   /*
@@ -1395,69 +1449,15 @@ end_boys:
   }
 }
 
-
-void GB4ElectronRepulsionIntegralLibInt::laplace_of_potential(
-    double prefac, double rho, double t, long mmax, double* output) {
-  boys_function_array(mmax, t, output);
-  prefac *= 2.0*M_PI/rho;
-  for (long m=0; m <= mmax; m++) {
-    output[m] *= prefac;
-  }
-}
-
-
-void GB4ErfIntegralLibInt::laplace_of_potential(
-    double prefac, double rho, double t, long mmax, double* output) {
-  double efac = mu*mu/(mu*mu + rho);
-  boys_function_array(mmax, t*efac, output);
-  prefac *= 2.0*M_PI/rho*sqrt(efac);
-  for (long m=0; m <= mmax; m++) {
-    output[m] *= prefac;
-    prefac *= efac;
-  }
-}
-
-
-void GB4GaussIntegralLibInt::laplace_of_potential(double prefac, double rho, double t,
-                                                  long mmax, double* output) {
-  double afac = alpha/(rho+alpha);
-  prefac *= (sqrt(M_PI*M_PI*M_PI)/(rho+alpha))*sqrt(1.0/(rho+alpha))*c*exp(-t*afac);
-  for (long m=0; m <= mmax; m++) {
-    output[m] = prefac;
-    prefac *= afac;
-  }
-}
-
-
-void GB4RAlphaIntegralLibInt::laplace_of_potential(double prefac, double rho, double t,
-                                                   long mmax, double* output) {
-  if (mmax > 10)
-    throw std::domain_error("mmax > 10, highest cartesian angular value implemented is 10");
-  prefac *= exp(-t)/(rho*sqrt(rho));
-  double tfactor = ((4.0*M_PI)/(2.0*sqrt(pow(rho, alpha))));
-  for (long m=0; m <= mmax; m++) {
-    output[m] = tfactor*dtaylor(m, alpha, t, prefac);
-  }
-}
-
-
-void GB4DeltaIntegralLibInt::laplace_of_potential(double prefac, double rho, double t,
-                                                   long mmax, double* output) {
-  std::cout << "exp(t) :" << exp(-t) << "\n";
-  for (long m=0; m <= mmax; m++) {
-    output[m] = prefac * exp(-t);
-  }
-}
-
-
 void GB4IntraDensIntegralLibInt::laplace_of_potential(double prefac, double rho, double t,
-                                                   long mmax, double* output) {
+                                                      double* p, double* q, long mmax,
+						      double* output) {
   for (long m=0; m <= mmax; m++) {
     double afac = 0;
-    afac += point[0]**2 + point[1]**2 + point[2]**2;
-    afac -= 2*point[0]*p[0] + 2*point[1]*p[1] + 2*point[2]*p[2]
-    afac += 2*point[0]*q[0] + 2*point[1]*q[1] + 2*point[2]*q[2]
-    afac *= rho
+    afac += (point[0]*point[0]) + (point[1]*point[0]) + (point[2]*point[2]);
+    afac -= 2*point[0]*p[0] + 2*point[1]*p[1] + 2*point[2]*p[2];
+    afac += 2*point[0]*q[0] + 2*point[1]*q[1] + 2*point[2]*q[2];
+    afac *= rho;
     output[m] = prefac * exp(-t-afac);
   }
 }

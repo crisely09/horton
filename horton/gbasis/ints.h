@@ -645,14 +645,14 @@ class GB4RAlphaIntegralLibInt : public GB4IntegralLibInt {
 
 
 /** @brief
-        Delta Electron repulsion four-center integrals.
+        Delta repulsion integrals.
 
     The potential is \delta(r).
   */
 class GB4DeltaIntegralLibInt : public GB4IntegralLibInt {
  public:
   /** @brief
-          Initialize a GB4DeltaIntegralLibInt object.
+          Initialize a GB4IntraDensIntegralLibInt object.
 
       @param max_shell_type
           Highest angular momentum index to be expected in the reset method.
@@ -672,17 +672,17 @@ class GB4DeltaIntegralLibInt : public GB4IntegralLibInt {
 };
 
 
-//! Base class for Intracule/Extracule densities (four-center) integrals that use LibInt.
-class GB4DensIntegralLibInt : public GB4Integral {
+//! Base class for four-center density integrals that use LibInt.
+class GB4DIntegralLibInt : public GB4Integral {
  public:
   /** @brief
-          Initialize a GB4IntegralLibInt object.
+          Initialize a GB4DensIntegralLibInt object.
 
       @param max_shell_type
           Highest angular momentum index to be expected in the reset method.
     */
-  explicit GB4DensIntegralLibInt(long max_shell_type);
-  ~GB4DensIntegralLibInt();
+  explicit GB4DIntegralLibInt(long max_shell_type);
+  ~GB4DIntegralLibInt();
 
   /** @brief
           Set internal parameters for a new group of four contractions.
@@ -723,12 +723,6 @@ class GB4DensIntegralLibInt : public GB4Integral {
           Rescaled distance between the two centers obtained from the application of the
           Gaussian product theorem. See Eq. (5) in Ahlrichs' paper.
 
-      @param p
-          Scaled distance between centers A and B. As defined in Ahlrichs' paper eq. (4)
-
-      @param q
-          Scaled distance between centers C and D. As defined in Ahlrichs' paper eq. (4)
-
       @param mmax
           Maximum derivative of the Laplace transform to be considered.
 
@@ -736,7 +730,7 @@ class GB4DensIntegralLibInt : public GB4Integral {
           Output array. The size must be at least mmax + 1.
    */
   virtual void laplace_of_potential(double prefac, double rho, double t, double* p,
-                                    double* q, long mmax, double* output) = 0;
+		  		    double* q, long mmax, double* output) = 0;
 
  private:
   Libint_eri_t erieval;         //!< LibInt runtime object.
@@ -748,13 +742,12 @@ class GB4DensIntegralLibInt : public GB4Integral {
   double cd2;                   //!< Norm squared of cd.
 };
 
-
 /** @brief
-        Intracular (four-center) density integrals at coordinate u.
+        Intracular (four-center) density integrals at coordinate point.
 
-    The potential is \delta(r - u).
+    The potential is \delta(r - point).
   */
-class GB4IntraDensIntegralLibInt : public GB4DensIntegralLibInt {
+class GB4IntraDensIntegralLibInt : public GB4DIntegralLibInt {
  public:
   /** @brief
           Initialize a GB4IntraDensIntegralLibInt object.
@@ -762,8 +755,8 @@ class GB4IntraDensIntegralLibInt : public GB4DensIntegralLibInt {
       @param max_shell_type
           Highest angular momentum index to be expected in the reset method.
     */
-  explicit GB4IntraDensIntegralLibInt(long max_shell_type)
-      : GB4DensIntegralLibInt(max_shell_type), point(point) {}
+  GB4IntraDensIntegralLibInt(long max_shell_type, double* point)
+      : GB4DIntegralLibInt(max_shell_type), point(point) {}
 
   /** @brief
           Evaluate the Laplace transform of the ordinary Coulomb potential.
@@ -773,9 +766,9 @@ class GB4IntraDensIntegralLibInt : public GB4DensIntegralLibInt {
       See base class for more details.
     */
   virtual void laplace_of_potential(double prefac, double rho, double t, double* p,
-                                    double* q, long mmax, double* output) = 0;
+                                    double* q, long mmax, double* output);
 
  private:
-  double* point;    //!< Array with values of the nuclear charges.
+  double* point;    //!< Array with point.
 };
 #endif
