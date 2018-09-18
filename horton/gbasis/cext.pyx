@@ -2090,7 +2090,6 @@ cdef class GB4IntraDensIntegralLibInt(GB4Integral):
 
     def __cinit__(self, long max_nbasis, np.ndarray[double, ndim=2] point not None):
         assert point.flags['C_CONTIGUOUS']
-        self._point = point
         self._this = <ints.GB4Integral*>(new ints.GB4IntraDensIntegralLibInt(max_nbasis, &point[0, 0]))
 
 

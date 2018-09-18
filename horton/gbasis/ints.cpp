@@ -991,7 +991,6 @@ void GB4RAlphaIntegralLibInt::laplace_of_potential(double prefac, double rho, do
 
 void GB4DeltaIntegralLibInt::laplace_of_potential(double prefac, double rho, double t,
                                                    long mmax, double* output) {
-  std::cout << "exp(t) :" << exp(-t) << "\n";
   for (long m=0; m <= mmax; m++) {
     output[m] = prefac * exp(-t);
   }
@@ -1454,8 +1453,8 @@ void GB4IntraDensIntegralLibInt::laplace_of_potential(double prefac, double rho,
 						      double* output) {
   for (long m=0; m <= mmax; m++) {
     double afac = 0;
-    afac += (point[0]*point[0]) + (point[1]*point[0]) + (point[2]*point[2]);
-    afac -= 2*point[0]*p[0] + 2*point[1]*p[1] + 2*point[2]*p[2];
+    afac += (point[0]*point[0]) + (point[1]*point[1]) + (point[2]*point[2]);
+    afac -= (2*point[0]*p[0] + 2*point[1]*p[1] + 2*point[2]*p[2]);
     afac += 2*point[0]*q[0] + 2*point[1]*q[1] + 2*point[2]*q[2];
     afac *= rho;
     output[m] = prefac * exp(-t-afac);
